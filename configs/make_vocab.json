@@ -1,0 +1,10 @@
+{
+    "train_data_path": "~/data/qanta/2018/qanta.train.2018.04.18.json",
+    "dataset_reader": {
+        "type": "quizbowl",
+        "tokenizer": null,
+        "token_indexers": {},
+        "text_unit": "question"
+    },
+    "datasets_for_vocab_creation": ["train"]
+}
