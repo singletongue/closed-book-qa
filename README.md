@@ -2,6 +2,13 @@
 
 - All the experiments were conducted on RAIDEN.
 
+## Install requirements
+
+```sh
+$ pip install -r requirements.txt
+$ python -m spacy download en_core_web_sm
+```
+
 ## Make vocabulary
 
 ```sh
@@ -11,10 +18,19 @@ $ allennlp make-vocab --serialization-dir work/vocab --include-package modules c
 ## Training
 
 ```sh
+$ mkdir -p work/quiz-ep10
 $ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/quiz-ep10/$config -N $config train_raiden.sh; done
+
+$ mkdir -p work/wiki-ep5
 $ for config_file in `ls configs/wiki-ep5`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/wiki-ep5/$config.json,SERIALIZATION_DIR=work/wiki-ep5/$config -N $config train_raiden.sh; done
+
+$ mkdir -p work/wiki-fp-ep10
 $ for config_file in `ls configs/wiki-fp-ep10`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/wiki-fp-ep10/$config.json,SERIALIZATION_DIR=work/wiki-fp-ep10/$config -N $config train_raiden.sh; done
+
+$ mkdir -p work/wiki-ep5_quiz-ep10
 $ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v MODEL_ARCHIVE=work/wiki-ep5/$config/model.tar.gz,CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/wiki-ep5_quiz-ep10/$config -N $config fine-tune_raiden.sh; done
+
+$ mkdir -p work/wiki-fp-ep10_quiz-ep10
 $ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v MODEL_ARCHIVE=work/wiki-fp-ep10/$config/model.tar.gz,CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/wiki-fp-ep10_quiz-ep10/$config -N $config fine-tune_raiden.sh; done
 ```
 
