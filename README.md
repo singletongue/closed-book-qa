@@ -1,4 +1,4 @@
-# LMs on Quizbowl
+# Quizbowl as a Testbed of Entity Knowledge
 
 - All the experiments were conducted on RAIDEN.
 
