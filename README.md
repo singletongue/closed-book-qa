@@ -37,6 +37,7 @@ $ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .j
 ## Evaluation
 
 ```sh
+$ for dirname in `ls -d work/quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_train.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.train.2018.04.18.json; done
 $ for dirname in `ls -d work/quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
 $ for dirname in `ls -d work/wiki-ep5/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
 $ for dirname in `ls -d work/wiki-fp-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
@@ -45,6 +46,14 @@ $ for dirname in `ls -d work/wiki-fp-ep10_quiz-ep10/*`; do allennlp evaluate --o
 ```
 
 ```sh
+$ allennlp print-results work/quiz-ep10 -k acc mrr -m metrics_train.json
+...
+model_run, acc, mrr
+work/quiz-ep10/bert-base/metrics_train.json, 0.9983086418659842, 0.9991528450589241
+work/quiz-ep10/bert-plain/metrics_train.json, 0.9816518635932948, 0.9896869642027022
+work/quiz-ep10/roberta-base/metrics_train.json, 0.998007562407573, 0.9989964018334462
+work/quiz-ep10/xlnet-base/metrics_train.json, 0.9991764591284635, 0.9995867536901637
+
 $ allennlp print-results work/quiz-ep10 -k acc mrr -m metrics_test.json
 ...
 model_run, acc, mrr
