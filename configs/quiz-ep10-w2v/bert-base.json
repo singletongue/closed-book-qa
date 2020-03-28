@@ -56,7 +56,7 @@
             "type": "embedding",
             "vocab_namespace": "entities",
             "embedding_dim": 300,
-            "pretrained_file": "work/wikipedia2vec/enwiki_20180420_300d_entity.txt"
+            "pretrained_file": "work/coling2020/wikipedia2vec/enwiki_20180420_300d_entity.txt.bz2"
         }
     },
     "iterator": {
