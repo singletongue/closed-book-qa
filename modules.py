@@ -366,7 +366,7 @@ class TransformerEmbedder(TokenEmbedder):
         if self.dropout_masking is not None:
             token_ids = self._dropout_mask_tokens(token_ids, mask=mask)
 
-        _, _, hidden_states = self.transformer_model(token_ids, attention_mask=mask)
+        hidden_states = self.transformer_model(token_ids, attention_mask=mask)[-1]
         return torch.cat([hidden_states[i] for i in self.layer_indices], dim=-1)
 
 
