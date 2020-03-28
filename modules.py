@@ -331,8 +331,8 @@ class TransformerEmbedder(TokenEmbedder):
                  dropout_masking: Optional[float] = None,
                  init_weights: bool = False) -> None:
         super(TransformerEmbedder, self).__init__()
-        self.transformer_model = AutoModel.from_pretrained(model_name)
-        self.transformer_model.config.output_hidden_states = True
+        config = AutoConfig.from_pretrained(model_name, output_hidden_states=True)
+        self.transformer_model = AutoModel.from_pretrained(model_name, config=config)
 
         self.mask_token_id = AutoTokenizer.from_pretrained(model_name).mask_token_id
         self.layer_indices = layer_indices
@@ -366,7 +366,7 @@ class TransformerEmbedder(TokenEmbedder):
         if self.dropout_masking is not None:
             token_ids = self._dropout_mask_tokens(token_ids, mask=mask)
 
-        hidden_states = self.transformer_model(token_ids, attention_mask=mask)[-1]
+        _, _, hidden_states = self.transformer_model(token_ids, attention_mask=mask)
         return torch.cat([hidden_states[i] for i in self.layer_indices], dim=-1)
 
 
