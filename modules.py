@@ -27,7 +27,7 @@ from allennlp.nn.util import get_text_field_mask, masked_mean, masked_max
 from allennlp.training.optimizers import Optimizer
 from allennlp.training.metrics import Metric, CategoricalAccuracy
 from allennlp.predictors.predictor import Predictor
-from transformers import AutoTokenizer, AutoModel, XLNetTokenizer, AdamW
+from transformers import AutoTokenizer, AutoConfig, AutoModel, XLNetTokenizer, AdamW
 
 
 logger = logging.getLogger(__name__)
