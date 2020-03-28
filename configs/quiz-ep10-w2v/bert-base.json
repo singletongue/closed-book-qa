@@ -89,6 +89,7 @@
         },
         "grad_norm": 1.0,
         "num_epochs": 10,
+        "patience": 3,
         "cuda_device": [0],
         "validation_metric": "+mrr",
         "num_serialized_models_to_keep": 1
