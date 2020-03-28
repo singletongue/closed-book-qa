@@ -1,6 +1,6 @@
 #!/bin/bash
 #$ -jc gpu-container_g1
-#$ -ac d=nvcr-pytorch-1910
+#$ -ac d=nvcr-pytorch-2001
 #$ -cwd
 #$ -j y
 
@@ -9,8 +9,8 @@ export LC_ALL=C.UTF-8
 export PYTHONIOENCODING=utf-8
 
 source $HOME/.raiden/setup_gpu.sh
-source /fefs/opt/dgx/env_set/nvcr-pytorch-1910.sh
-source python/bin/activate
+source /fefs/opt/dgx/env_set/nvcr-pytorch-2001.sh
+source venv/coling2020/bin/activate
 
 if [ -d $SERIALIZATION_DIR ]; then
     allennlp train $CONFIG_FILE \
