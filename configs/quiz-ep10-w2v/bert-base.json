@@ -32,7 +32,7 @@
         "text_unit": "question"
     },
     "vocabulary": {
-        "directory_path": "work/vocab/vocabulary"
+        "directory_path": "work/coling2020/vocab/vocabulary"
     },
     "model": {
         "type": "quizbowl_guesser",
