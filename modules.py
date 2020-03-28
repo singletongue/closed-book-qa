@@ -242,47 +242,23 @@ class TransformerTokenizer(Tokenizer):
     def __init__(self,
                  model_name: str,
                  add_special_tokens: bool = True,
-                 max_length: int = None,
-                 stride: int = 0,
-                 truncation_strategy: str = "longest_first") -> None:
+                 max_length: int = None) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.add_special_tokens = add_special_tokens
         self.max_length = max_length
-        self.stride = stride
-        self.truncation_strategy = truncation_strategy
 
-    def _tokenize(self,
-                  sentence_1: str,
-                  sentence_2: str = None) -> List[Token]:
+    @overrides
+    def tokenize(self, text: str) -> List[Token]:
         encoded_tokens = self.tokenizer.encode_plus(
-            text=sentence_1,
-            text_pair=sentence_2,
+            text=text,
             add_special_tokens=self.add_special_tokens,
             max_length=self.max_length,
-            stride=self.stride,
-            truncation_strategy=self.truncation_strategy,
             return_tensors=None)
 
         token_ids = encoded_tokens['input_ids']
         tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
         tokens = [Token(text=token) for token in tokens]
         return tokens
-
-    def tokenize_sentence_pair(self,
-                               sentence_1: str,
-                               sentence_2: str) -> List[Token]:
-        """
-        This methods properly handels a pair of sentences.
-        """
-        return self._tokenize(sentence_1, sentence_2)
-
-    @overrides
-    def tokenize(self, text: str) -> List[Token]:
-        """
-        This method only handels a single sentence (or sequence) of text.
-        Refer to the ``tokenize_sentence_pair`` method if you have a sentence pair.
-        """
-        return self._tokenize(text)
 
 
 @TokenIndexer.register('transformer')
@@ -306,35 +282,10 @@ class TransformerIndexer(TokenIndexer[int]):
         logger.info(f'Using token indexer padding value of {self.padding_value}')
         self.added_to_vocabulary = False
 
-    def add_encoding_to_vocabulary(self, vocab: Vocabulary) -> None:
-        """
-        Copies tokens from ```transformers``` model to the specified namespace.
-        Transformers vocab is taken from the <vocab>/<encoder> keys of the tokenizer
-        object.
-        """
-        vocab_field_name = None
-        if hasattr(self.tokenizer, 'vocab'):
-            vocab_field_name = 'vocab'
-        elif hasattr(self.tokenizer, 'encoder'):
-            vocab_field_name = 'encoder'
-        else:
-            logger.warning(
-                """Wasn't able to fetch vocabulary from transformers lib.
-                Neither <vocab> nor <encoder> are the valid fields for vocab.
-                Your tokens will still be correctly indexed, but vocabulary file will
-                not be saved.""")
-
-        if vocab_field_name is not None:
-            pretrained_vocab = getattr(self.tokenizer, vocab_field_name)
-            for word, idx in pretrained_vocab.items():
-                vocab._token_to_index[self.namespace][word] = idx
-                vocab._index_to_token[self.namespace][idx] = word
-
     @overrides
     def count_vocab_items(self,
                           token: Token,
                           counter: Dict[str, Dict[str, int]]):
-        # If we only use pretrained models, we don't need to do anything here.
         pass
 
     @overrides
@@ -342,10 +293,6 @@ class TransformerIndexer(TokenIndexer[int]):
                           tokens: List[Token],
                           vocabulary: Vocabulary,
                           index_name: str) -> Dict[str, List[int]]:
-        if not self.added_to_vocabulary:
-            self.add_encoding_to_vocabulary(vocabulary)
-            self.added_to_vocabulary = True
-
         tokens = [token.text for token in tokens]
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
 
@@ -375,21 +322,6 @@ class TransformerIndexer(TokenIndexer[int]):
 
         return tensors
 
-    def __eq__(self, other):
-        if isinstance(other, TransformerIndexer):
-            for key in self.__dict__:
-                if key == 'tokenizer':
-                    # This is a reference to a function in the huggingface code, which
-                    # we can't really modify to make this clean.  So we special-case it.
-                    continue
-
-                if self.__dict__[key] != other.__dict__[key]:
-                    return False
-
-            return True
-
-        return NotImplemented
-
 
 @TokenEmbedder.register('transformer')
 class TransformerEmbedder(TokenEmbedder):
@@ -402,7 +334,6 @@ class TransformerEmbedder(TokenEmbedder):
         self.transformer_model = AutoModel.from_pretrained(model_name,
                                                            output_hidden_states=True)
         self.mask_token_id = AutoTokenizer.from_pretrained(model_name).mask_token_id
-
         self.layer_indices = layer_indices
         if init_weights:
             self.transformer_model.init_weights()
@@ -417,12 +348,13 @@ class TransformerEmbedder(TokenEmbedder):
     def _dropout_mask_tokens(self,
                              token_ids: torch.LongTensor,
                              mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        mask_probs = torch.rand_like(token_ids, dtype=torch.float)
+        probs = torch.rand_like(token_ids, dtype=torch.float)
         if mask is not None:
             mask_probs *= mask
 
-        token_ids = torch.where(mask_probs > (1.0 - self.dropout_masking),
-            torch.full_like(token_ids, self.mask_token_id), token_ids)
+        token_ids = torch.where(probs > self.dropout_masking,
+                                token_ids,
+                                torch.full_like(token_ids, self.mask_token_id))
 
         return token_ids
 
@@ -454,7 +386,7 @@ class TransformerPooler(Seq2VecEncoder):
 
         if do_projection:
             self.projection = nn.Linear(input_dim, output_dim)
-            nn.init.normal_(self.projection.weight, mean=0.0, std=0.02)
+            nn.init.xavier_uniform_(self.projection.weight)
 
         if activation is None:
             pass
@@ -520,6 +452,7 @@ class QuizbowlGuesser(Model):
                  vocab: Vocabulary,
                  text_field_embedder: TextFieldEmbedder,
                  text_encoder: Seq2VecEncoder,
+                 entity_embedder: TokenEmbedder,
                  dropout_embeddings: float = 0.0,
                  dropout_encodings: float = 0.0,
                  dropout_logits: float = 0.0,
@@ -531,9 +464,7 @@ class QuizbowlGuesser(Model):
         self.dropout_encodings = nn.Dropout(dropout_encodings)
 
         num_entities = vocab.get_vocab_size('entities')
-        encoding_dim = self.text_encoder.get_output_dim()
-        self.entity_embedder = Embedding(num_entities, encoding_dim,
-                                         vocab_namespace='entities')
+        self.entity_embedder = entity_embedder
         if do_batch_norm:
             self.batch_norm = nn.BatchNorm1d(num_entities)
 
@@ -547,8 +478,6 @@ class QuizbowlGuesser(Model):
                 entity: torch.Tensor,
                 metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
         output = dict()
-
-        batch_size = int(entity.size(0))
 
         mask = get_text_field_mask(tokens)
 
@@ -581,31 +510,28 @@ class QuizbowlGuesser(Model):
     @overrides
     def decode(self,
                output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        batch_top1_entity = []
-        batch_top10_entities = []
-        batch_rank = []
+        top1_entities = []
+        top10_entities = []
+        ranks = []
 
-        batch_log_probs = output_dict['log_probs']
-        assert batch_log_probs.dim() == 2  # (batch_size, n_classes)
-        batch_correct_entity = [m['entity'] for m in output_dict['metadata']]
-
-        for log_probs, correct_entity in zip(batch_log_probs, batch_correct_entity):
-            top_probs, top_ids = torch.sort(log_probs, descending=True)
+        for probs, metadata in zip(output_dict['log_probs'], output_dict['metadata']):
+            _, top_ids = torch.sort(probs, descending=True)
             top_entities = [self.vocab.get_index_to_token_vocabulary('entities')[i]
                             for i in top_ids.tolist()]
+            top1_entities.append(top_entities[0])
+            top10_entities.append(top_entities[:10])
 
-            if correct_entity in top_entities:
-                rank = top_entities.index(correct_entity) + 1
-            else:
-                rank = None
+            if 'entity' in metadata:
+                correct_entity = metadata['entity'].replace(' ', '_')
+                if correct_entity in top_entities:
+                    ranks.append(top_entities.index(correct_entity) + 1)
+                else:
+                    ranks.append(None)
 
-            batch_top1_entity.append(top_entities[0])
-            batch_top10_entities.append(top_entities[:10])
-            batch_rank.append(rank)
+        output_dict['top1_entity'] = top1_entities
+        output_dict['top10_entities'] = top10_entities
+        output_dict['rank'] = ranks
 
-        output_dict['top1_entity'] = batch_top1_entity
-        output_dict['top10_entities'] = batch_top10_entities
-        output_dict['rank'] = batch_rank
         del output_dict['log_probs']  # delete it since it's really big
 
         return output_dict
@@ -626,26 +552,30 @@ class QuizbowlGuesser(Model):
 @Predictor.register('quizbowl')
 class QuizbowlPredictor(Predictor):
     def predict(self, sentence: str) -> JsonDict:
-        return self.predict_json({"sentence": sentence})
+        return self.predict_json({'sentence': sentence})
 
     @overrides
-    def _json_to_instance(self,
-                          json_dict: JsonDict) -> Instance:
+    def _json_to_instance(self, json_dict: JsonDict) -> Instance:
         text = json_dict['text']
         entity = json_dict.get('entity')
-        metadata = json_dict.get('metadata')
+        metadata = json_dict.get('metadata') or json_dict
         return self._dataset_reader.text_to_instance(text, entity, metadata)
 
     @overrides
-    def predictions_to_labeled_instances(self,
+    def predictions_to_labeled_instances(
+            self,
             instance: Instance,
             outputs: Dict[str, numpy.ndarray]) -> List[Instance]:
         new_instance = deepcopy(instance)
         pred_entity = numpy.argmax(outputs['log_probs'])
-        new_instance.add_field('entity',
-            LabelField(int(pred_entity), 'entities', skip_indexing=True))
+        new_instance.add_field(
+            'entity', LabelField(int(pred_entity), 'entities', skip_indexing=True))
 
         return new_instance
+
+    @overrides
+    def dump_line(self, outputs: JsonDict) -> str:
+        return json.dumps(outputs, ensure_ascii=False) + '\n'
 
 
 @Metric.register('mean_reciprocal_rank')
