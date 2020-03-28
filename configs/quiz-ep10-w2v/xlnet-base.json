@@ -5,13 +5,13 @@
         "type": "quizbowl",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "bert-base-cased",
+            "model_name": "xlnet-base-cased",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "bert-base-cased"
+                "model_name": "xlnet-base-cased"
             }
         },
         "text_unit": "sentence"
@@ -20,13 +20,13 @@
         "type": "quizbowl",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "bert-base-cased",
+            "model_name": "xlnet-base-cased",
             "max_length": 512
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "bert-base-cased"
+                "model_name": "xlnet-base-cased"
             }
         },
         "text_unit": "question"
@@ -40,14 +40,14 @@
             "token_embedders": {
                 "tokens": {
                     "type": "transformer",
-                    "model_name": "bert-base-cased"
+                    "model_name": "xlnet-base-cased"
                 }
             },
             "allow_unmatched_keys": true
         },
         "text_encoder": {
             "type": "transformer",
-            "pooling_type": "first",
+            "pooling_type": "last",
             "input_dim": 768,
             "output_dim": 300,
             "do_projection": true
