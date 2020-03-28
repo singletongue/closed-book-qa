@@ -351,7 +351,7 @@ class TransformerEmbedder(TokenEmbedder):
                              mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         probs = torch.rand_like(token_ids, dtype=torch.float)
         if mask is not None:
-            mask_probs *= mask
+            probs *= mask
 
         token_ids = torch.where(probs > self.dropout_masking,
                                 token_ids,
