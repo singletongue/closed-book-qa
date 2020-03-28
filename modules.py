@@ -331,8 +331,9 @@ class TransformerEmbedder(TokenEmbedder):
                  dropout_masking: Optional[float] = None,
                  init_weights: bool = False) -> None:
         super(TransformerEmbedder, self).__init__()
-        self.transformer_model = AutoModel.from_pretrained(model_name,
-                                                           output_hidden_states=True)
+        self.transformer_model = AutoModel.from_pretrained(model_name)
+        self.transformer_model.config.output_hidden_states = True
+
         self.mask_token_id = AutoTokenizer.from_pretrained(model_name).mask_token_id
         self.layer_indices = layer_indices
         if init_weights:
