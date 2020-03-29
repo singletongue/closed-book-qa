@@ -5,13 +5,13 @@
         "type": "quizbowl",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "bert-base-cased",
+            "model_name": "xlnet-base-cased",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "bert-base-cased"
+                "model_name": "xlnet-base-cased"
             }
         },
         "sentence_splitter": {

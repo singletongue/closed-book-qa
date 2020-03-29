@@ -5,13 +5,13 @@
         "type": "quizbowl",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "bert-base-cased",
+            "model_name": "roberta-base",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "bert-base-cased"
+                "model_name": "roberta-base"
             }
         },
         "sentence_splitter": {
@@ -23,7 +23,7 @@
         "wiki_file_path": "~/data/qanta/2018/wiki_lookup.json",
         "wiki_text_unit": "sentence",
         "do_mask_entity_mentions": true,
-        "mask_token": "[MASK]"
+        "mask_token": "<mask>"
     },
     "validation_dataset_reader": {
         "type": "quizbowl",
