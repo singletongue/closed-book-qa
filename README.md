@@ -12,10 +12,28 @@ $ python -m spacy download en_core_web_sm
 ## Make vocabulary
 
 ```sh
-$ allennlp make-vocab --serialization-dir work/vocab --include-package modules configs/make_vocab.json
+$ allennlp make-vocab --serialization-dir work/coling2020/vocab --include-package modules configs/make_vocab.json
+```
+
+## Extract Wikipedia2vec Entity Embedding
+
+```sh
+$ python extract_wikipedia2vec_entity_embedding.py --input_file ~//enwiki_20180420_300d.txt.bz2 --output_file ~/Downloads/enwiki_20180420_300d_entity.txt.bz2
 ```
 
 ## Training
+
+```sh
+$ mkdir -p work/coling2020/quiz-ep10-w2v
+$ for config_file in `ls configs/quiz-ep10-w2v`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/quiz-ep10-w2v/$config.json,SERIALIZATION_DIR=work/coling2020/quiz-ep10-w2v/$config -N $config train_raiden.sh; done
+
+$ mkdir -p work/coling2020/wiki-ep5-w2v
+$ for config_file in `ls configs/wiki-ep5-w2v`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/wiki-ep5-w2v/$config.json,SERIALIZATION_DIR=work/coling2020/wiki-ep5-w2v/$config -N $config train_raiden.sh; done
+
+$ mkdir -p work/wiki-ep5_quiz-ep10-w2v
+$ for config_file in `ls configs/quiz-ep10-w2v`; do config=`basename $config_file .json`; qsub -v MODEL_ARCHIVE=work/coling2020/wiki-ep5-w2v/$config/model.tar.gz,CONFIG_FILE=configs/quiz-ep10-w2v/$config.json,SERIALIZATION_DIR=work/coling2020/wiki-ep5_quiz-ep10-w2v/$config -N $config fine-tune_raiden.sh; done
+```
+
 
 ```sh
 $ mkdir -p work/quiz-ep10
