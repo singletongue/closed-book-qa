@@ -1,8 +1,8 @@
 {
-    "train_data_path": "~/data/qanta/2018/qanta.train.2018.04.18.json",
-    "validation_data_path": "~/data/qanta/2018/qanta.dev.2018.04.18.json",
+    "train_data_path": "work/dataset/train_sentence.json",
+    "validation_data_path": "work/dataset/dev_question.json",
     "dataset_reader": {
-        "type": "quizbowl",
+        "type": "text_entity",
         "tokenizer": {
             "type": "transformer",
             "model_name": "bert-base-cased",
@@ -13,11 +13,10 @@
                 "type": "transformer",
                 "model_name": "bert-base-cased"
             }
-        },
-        "text_unit": "sentence"
+        }
     },
     "validation_dataset_reader": {
-        "type": "quizbowl",
+        "type": "text_entity",
         "tokenizer": {
             "type": "transformer",
             "model_name": "bert-base-cased",
@@ -28,8 +27,7 @@
                 "type": "transformer",
                 "model_name": "bert-base-cased"
             }
-        },
-        "text_unit": "question"
+        }
     },
     "vocabulary": {
         "directory_path": "work/vocab/vocabulary"
@@ -40,8 +38,7 @@
             "token_embedders": {
                 "tokens": {
                     "type": "transformer",
-                    "model_name": "bert-base-cased",
-                    "init_weights": true
+                    "model_name": "bert-base-cased"
                 }
             },
             "allow_unmatched_keys": true
@@ -71,7 +68,7 @@
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
-            "lr": 1e-4,
+            "lr": 5e-5,
             "weight_decay": 0.01,
             "correct_bias": false
         },

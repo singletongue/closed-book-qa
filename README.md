@@ -2,11 +2,27 @@
 
 - All the experiments were conducted on RAIDEN.
 
-## Install requirements
+## Make datasets
 
 ```sh
-$ pip install -r requirements.txt
-$ python -m spacy download en_core_web_sm
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.train.2018.04.18.json --output_file work/dataset/train_question.json --text_unit question
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.train.2018.04.18.json --output_file work/dataset/train_sentence.json --text_unit sentence
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/dev_question.json --text_unit question
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/dev_sentence.json --text_unit sentence
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.test.2018.04.18.json --output_file work/dataset/test_question.json --text_unit question
+$ python make_quiz_dataset.py --dataset_file ~/data/qanta/2018/qanta.test.2018.04.18.json --output_file work/dataset/test_sentence.json --text_unit sentence
+$ python make_wiki_dataset.py --dataset_file ~/data/qanta/2018/wiki_lookup.json --output_file work/dataset/wiki_sentence_blingfire.json --text_unit sentence --sent_splitter blingfire
+$ python make_wiki_dataset.py --dataset_file ~/data/qanta/2018/wiki_lookup.json --output_file work/dataset/wiki-fp_sentence_blingfire.json --text_unit sentence --sent_splitter blingfire --max_paragraphs 1
+```
+
+## Compute perplexities
+
+```sh
+# Takes about 3h on amaretto01
+$ python compute_perplexity.py --dataset_file work/dataset/train_sent.json --output_file work/dataset/train_sent_perplexity.json --pretrained_model_name gpt2 --device cuda:0
+
+# Takes about 19h on amaretto01
+$ python compute_perplexity.py --dataset_file work/wiki_sent_blingfire.json --output_file work/dataset/wiki_sent_blingfire_perplexity.json --pretrained_model_name gpt2 --device cuda:0
 ```
 
 ## Make vocabulary
@@ -18,94 +34,116 @@ $ allennlp make-vocab --serialization-dir work/vocab --include-package modules c
 ## Training
 
 ```sh
-$ mkdir -p work/quiz-ep10
-$ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/quiz-ep10/$config -N $config train_raiden.sh; done
+$ mkdir work/quiz
+$ qsub -v CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/quiz/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz/roberta-base.json,SERIALIZATION_DIR=work/quiz/roberta-base -N roberta-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz/xlnet-base.json,SERIALIZATION_DIR=work/quiz/xlnet-base -N xlnet-base train_raiden.sh
 
-$ mkdir -p work/wiki-ep5
-$ for config_file in `ls configs/wiki-ep5`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/wiki-ep5/$config.json,SERIALIZATION_DIR=work/wiki-ep5/$config -N $config train_raiden.sh; done
+$ mkdir work/wiki
+$ qsub -v CONFIG_FILE=configs/wiki/bert-base.json,SERIALIZATION_DIR=work/wiki/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/bert-base_ppl-50.json,SERIALIZATION_DIR=work/wiki/bert-base_ppl-50 -N bert-base_ppl-50 train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/bert-base_ppl-100.json,SERIALIZATION_DIR=work/wiki/bert-base_ppl-100 -N bert-base_ppl-100 train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/bert-base_ppl-150.json,SERIALIZATION_DIR=work/wiki/bert-base_ppl-150 -N bert-base_ppl-150 train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/roberta-base.json,SERIALIZATION_DIR=work/wiki/roberta-base -N roberta-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/xlnet-base.json,SERIALIZATION_DIR=work/wiki/xlnet-base -N xlnet-base train_raiden.sh
 
-$ mkdir -p work/wiki-fp-ep10
-$ for config_file in `ls configs/wiki-fp-ep10`; do config=`basename $config_file .json`; qsub -v CONFIG_FILE=configs/wiki-fp-ep10/$config.json,SERIALIZATION_DIR=work/wiki-fp-ep10/$config -N $config train_raiden.sh; done
+$ mkdir work/wiki-fp
+$ qsub -v CONFIG_FILE=configs/wiki-fp/bert-base.json,SERIALIZATION_DIR=work/wiki-fp/bert-base -N bert-base train_raiden.sh
 
-$ mkdir -p work/wiki-ep5_quiz-ep10
-$ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v MODEL_ARCHIVE=work/wiki-ep5/$config/model.tar.gz,CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/wiki-ep5_quiz-ep10/$config -N $config fine-tune_raiden.sh; done
+$ mkdir work/wiki_quiz
+$ qsub -v MODEL_ARCHIVE=work/wiki/bert-base/model.tar.gz,CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_quiz/bert-base -N bert-base fine-tune_raiden.sh
+$ qsub -v MODEL_ARCHIVE=work/wiki/bert-base_ppl-50/model.tar.gz,CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_quiz/bert-base_ppl-50 -N bert-base_ppl-50 fine-tune_raiden.sh
+$ qsub -v MODEL_ARCHIVE=work/wiki/bert-base_ppl-100/model.tar.gz,CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_quiz/bert-base_ppl-100 -N bert-base_ppl-100 fine-tune_raiden.sh
+$ qsub -v MODEL_ARCHIVE=work/wiki/bert-base_ppl-150/model.tar.gz,CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_quiz/bert-base_ppl-150 -N bert-base_ppl-150 fine-tune_raiden.sh
 
-$ mkdir -p work/wiki-fp-ep10_quiz-ep10
-$ for config_file in `ls configs/quiz-ep10`; do config=`basename $config_file .json`; qsub -v MODEL_ARCHIVE=work/wiki-fp-ep10/$config/model.tar.gz,CONFIG_FILE=configs/quiz-ep10/$config.json,SERIALIZATION_DIR=work/wiki-fp-ep10_quiz-ep10/$config -N $config fine-tune_raiden.sh; done
+$ mkdir work/wiki-fp_quiz
+$ qsub -v MODEL_ARCHIVE=work/wiki-fp/bert-base/model.tar.gz,CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/wiki-fp_quiz/bert-base -N bert-base fine-tune_raiden.sh
+
+$ mkdir work/wiki_quiz_mixed
+$ qsub -v CONFIG_FILE=configs/wiki_quiz_mixed/bert-base.json,SERIALIZATION_DIR=work/wiki_quiz_mixed/bert-base -N bert-base train_raiden.sh
+
+$ mkdir work/wiki-fp_quiz_mixed
+$ qsub -v CONFIG_FILE=configs/wiki-fp_quiz_mixed/bert-base.json,SERIALIZATION_DIR=work/wiki-fp_quiz_mixed/bert-base -N bert-base train_raiden.sh
 ```
+
+---
 
 ## Evaluation
 
 ```sh
-$ for dirname in `ls -d work/quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_train.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.train.2018.04.18.json; done
-$ for dirname in `ls -d work/quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
-$ for dirname in `ls -d work/wiki-ep5/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
-$ for dirname in `ls -d work/wiki-fp-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
-$ for dirname in `ls -d work/wiki-ep5_quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
-$ for dirname in `ls -d work/wiki-fp-ep10_quiz-ep10/*`; do allennlp evaluate --output-file $dirname/metrics_test.json --cuda-device 0 --include-package modules $dirname/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json; done
+$ allennlp evaluate --output-file work/quiz/bert-base/metrics_train.json --cuda-device 0 --include-package modules work/quiz/bert-base/model.tar.gz work/dataset/train_question.json
+$ allennlp evaluate --output-file work/quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/quiz/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki/bert-base_ppl-50/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-50/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki/bert-base_ppl-100/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-100/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki/bert-base_ppl-150/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-150/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki-fp/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki-fp/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-50/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-50/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-100/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-100/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-150/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-150/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki-fp_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki-fp_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp_quiz/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki_quiz_mixed/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz_mixed/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_quiz_mixed/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki_quiz_mixed/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki-fp_quiz_mixed/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp_quiz_mixed/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki-fp_quiz_mixed/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp_quiz_mixed/bert-base/model.tar.gz work/dataset/test_question.json
 ```
 
 ```sh
-$ allennlp print-results work/quiz-ep10 -k acc mrr -m metrics_train.json
+# dev
+$ allennlp print-results work -k acc mrr -m metrics_dev.json
 ...
 model_run, acc, mrr
-work/quiz-ep10/bert-base/metrics_train.json, 0.9983086418659842, 0.9991528450589241
-work/quiz-ep10/bert-plain/metrics_train.json, 0.9816518635932948, 0.9896869642027022
-work/quiz-ep10/roberta-base/metrics_train.json, 0.998007562407573, 0.9989964018334462
-work/quiz-ep10/xlnet-base/metrics_train.json, 0.9991764591284635, 0.9995867536901637
+work/quiz/bert-base/metrics_dev.json, 0.6949458483754513, 0.7361946579351322
+work/wiki-fp/bert-base/metrics_dev.json, 0.0898014440433213, 0.15248111764554081
+work/wiki-fp_quiz/bert-base/metrics_dev.json, 0.7080324909747292, 0.7500329727730596
+work/wiki-fp_quiz_mixed/bert-base/metrics_dev.json, 0.6389891696750902, 0.6966216080025215
+work/wiki/bert-base/metrics_dev.json, 0.2739169675090253, 0.3521658570542663
+work/wiki/bert-base_ppl-100/metrics_dev.json, 0.18907942238267147, 0.2665763878219825
+work/wiki/bert-base_ppl-150/metrics_dev.json, 0.12364620938628158, 0.1991181737450809
+work/wiki/bert-base_ppl-50/metrics_dev.json, 0.2621841155234657, 0.3393070915115439
+work/wiki_quiz/bert-base/metrics_dev.json, 0.7260830324909747, 0.762442942560795
+work/wiki_quiz/bert-base_ppl-100/metrics_dev.json, 0.7134476534296029, 0.753419260686055
+work/wiki_quiz/bert-base_ppl-150/metrics_dev.json, 0.7066787003610109, 0.747829943357392
+work/wiki_quiz/bert-base_ppl-50/metrics_dev.json, 0.7265342960288809, 0.7605760975434892
+work/wiki_quiz_mixed/bert-base/metrics_dev.json, 0.6692238267148014, 0.7213154775140949
 
-$ allennlp print-results work/quiz-ep10 -k acc mrr -m metrics_test.json
+# test
+$ allennlp print-results work -k acc mrr -m metrics_test.json
 ...
 model_run, acc, mrr
-work/quiz-ep10/bert-base/metrics_test.json, 0.6128167641325536, 0.6653197468140437
-work/quiz-ep10/bert-plain/metrics_test.json, 0.37451267056530213, 0.4569582708804463
-work/quiz-ep10/roberta-base/metrics_test.json, 0.5716374269005848, 0.6327016924092179
-work/quiz-ep10/xlnet-base/metrics_test.json, 0.642056530214425, 0.6900900767328214
-
-$ allennlp print-results work/wiki-ep5 -k acc mrr -m metrics_test.json
-...
-model_run, acc, mrr
-work/wiki-ep5/bert-base/metrics_test.json, 0.24317738791423002, 0.32111390582766913
-work/wiki-ep5/bert-plain/metrics_test.json, 0.1895711500974659, 0.2602922100188904
-work/wiki-ep5/roberta-base/metrics_test.json, 0.2395224171539961, 0.31546673108959755
-work/wiki-ep5/xlnet-base/metrics_test.json, 0.2548732943469786, 0.3338834507714006
-
-$ allennlp print-results work/wiki-ep5_quiz-ep10 -k acc mrr -m metrics_test.json
-...
-model_run, acc, mrr
-work/wiki-ep5_quiz-ep10/bert-base/metrics_test.json, 0.6408382066276803, 0.6883744886744092
-work/wiki-ep5_quiz-ep10/bert-plain/metrics_test.json, 0.5633528265107213, 0.6218274796915333
-work/wiki-ep5_quiz-ep10/roberta-base/metrics_test.json, 0.6437621832358674, 0.6927164067998964
-work/wiki-ep5_quiz-ep10/xlnet-base/metrics_test.json, 0.675682261208577, 0.7157083809027198
-
-$ allennlp print-results work/wiki-fp-ep10 -k acc mrr -m metrics_test.json
-...
-model_run, acc, mrr
-work/wiki-fp-ep10/bert-base/metrics_test.json, 0.06700779727095517, 0.12070249195335901
-work/wiki-fp-ep10/bert-plain/metrics_test.json, 0.0, 0.0002779683636476015
-work/wiki-fp-ep10/roberta-base/metrics_test.json, 0.06505847953216375, 0.12057401480962891
-work/wiki-fp-ep10/xlnet-base/metrics_test.json, 0.08503898635477583, 0.13603812194707102
-
-$ allennlp print-results work/wiki-fp-ep10_quiz-ep10 -k acc mrr -m metrics_test.json
-...
-model_run, acc, mrr
-work/wiki-fp-ep10_quiz-ep10/bert-base/metrics_test.json, 0.6362085769980507, 0.6858038216771206
-work/wiki-fp-ep10_quiz-ep10/bert-plain/metrics_test.json, 0.0026803118908382065, 0.00808503616512272
-work/wiki-fp-ep10_quiz-ep10/roberta-base/metrics_test.json, 0.5977095516569201, 0.6556458677697136
-work/wiki-fp-ep10_quiz-ep10/xlnet-base/metrics_test.json, 0.6649610136452242, 0.7068973945827745
+work/quiz/bert-base/metrics_test.json, 0.631578947368421, 0.6830452806071231
+work/wiki-fp/bert-base/metrics_test.json, 0.07943469785575048, 0.13582232366470334
+work/wiki-fp_quiz/bert-base/metrics_test.json, 0.6515594541910331, 0.6999382718264708
+work/wiki-fp_quiz_mixed/bert-base/metrics_test.json, 0.6016081871345029, 0.6592202992931909
+work/wiki/bert-base/metrics_test.json, 0.2387914230019493, 0.3148093954396759
+work/wiki_quiz/bert-base/metrics_test.json, 0.6754385964912281, 0.7150998591911956
+work/wiki_quiz_mixed/bert-base/metrics_test.json, 0.6220760233918129, 0.67730507039652
 ```
 
 ## Prediction
 
 ```sh
-$ allennlp predict work/quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.dev.2018.04.18.json --output-file work/quiz-ep10/xlnet-base/prediction_dev.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
-$ allennlp predict work/quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json --output-file work/quiz-ep10/xlnet-base/prediction_test.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
-$ allennlp predict work/wiki-ep5_quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.dev.2018.04.18.json --output-file work/wiki-ep5_quiz-ep10/xlnet-base/prediction_dev.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
-$ allennlp predict work/wiki-ep5_quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json --output-file work/wiki-ep5_quiz-ep10/xlnet-base/prediction_test.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+# question-level evaluation
+$ allennlp predict work/quiz/bert-base/model.tar.gz work/dataset/dev_question.json --output-file work/quiz/bert-base/prediction_dev_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/quiz/bert-base/model.tar.gz work/dataset/test_question.json --output-file work/quiz/bert-base/prediction_test_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/wiki_quiz/bert-base/model.tar.gz work/dataset/dev_question.json --output-file work/wiki_quiz/bert-base/prediction_dev_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/wiki_quiz/bert-base/model.tar.gz work/dataset/test_question.json --output-file work/wiki_quiz/bert-base/prediction_test_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
 
-$ allennlp predict work/quiz-ep10/bert-base/model.tar.gz ~/data/qanta/2018/qanta.dev.2018.04.18.json --output-file work/quiz-ep10/bert-base/prediction_dev_split.json --silent --cuda-device 0 --use-dataset-reader --overrides '{"validation_dataset_reader": {"text_unit": "sentence"}}' --predictor quizbowl --include-package modules
-$ allennlp predict work/quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.dev.2018.04.18.json --output-file work/quiz-ep10/xlnet-base/prediction_dev_split.json --silent --cuda-device 0 --use-dataset-reader --overrides '{"validation_dataset_reader": {"text_unit": "sentence"}}' --predictor quizbowl --include-package modules
-$ allennlp predict work/quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json --output-file work/quiz-ep10/xlnet-base/prediction_test_split.json --silent --cuda-device 0 --use-dataset-reader --overrides '{"validation_dataset_reader": {"text_unit": "sentence"}}' --predictor quizbowl --include-package modules
-$ allennlp predict work/wiki-ep5_quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.dev.2018.04.18.json --output-file work/wiki-ep5_quiz-ep10/xlnet-base/prediction_dev_split.json --silent --cuda-device 0 --use-dataset-reader --overrides '{"validation_dataset_reader": {"text_unit": "sentence"}}' --predictor quizbowl --include-package modules
-$ allennlp predict work/wiki-ep5_quiz-ep10/xlnet-base/model.tar.gz ~/data/qanta/2018/qanta.test.2018.04.18.json --output-file work/wiki-ep5_quiz-ep10/xlnet-base/prediction_test_split.json --silent --cuda-device 0 --use-dataset-reader --overrides '{"validation_dataset_reader": {"text_unit": "sentence"}}' --predictor quizbowl --include-package modules
+# sentence-level evaluation
+$ allennlp predict work/quiz/bert-base/model.tar.gz work/dataset/dev_sentence.json --output-file work/quiz/bert-base/prediction_dev_sentence.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/quiz/bert-base/model.tar.gz work/dataset/test_sentence.json --output-file work/quiz/bert-base/prediction_test_sentence.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/wiki_quiz/bert-base/model.tar.gz work/dataset/dev_sentence.json --output-file work/wiki_quiz/bert-base/prediction_dev_sentence.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
+$ allennlp predict work/wiki_quiz/bert-base/model.tar.gz work/dataset/test_sentence.json --output-file work/wiki_quiz/bert-base/prediction_test_sentence.json --silent --cuda-device 0 --use-dataset-reader --predictor quizbowl --include-package modules
 ```

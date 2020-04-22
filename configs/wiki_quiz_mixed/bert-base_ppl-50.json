@@ -1,35 +1,39 @@
 {
-    "train_data_path": "~/data/qanta/2018/qanta.train.2018.04.18.json",
-    "validation_data_path": "~/data/qanta/2018/qanta.dev.2018.04.18.json",
+    "train_data_path": [
+        "work/dataset/train_sentence.json",
+        "work/dataset/wiki_sentence_blingfire_perplexity.json"
+    ],
+    "validation_data_path": "work/dataset/dev_question.json",
     "dataset_reader": {
-        "type": "quizbowl",
+        "type": "text_entity",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "xlnet-base-cased",
+            "model_name": "bert-base-cased",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "xlnet-base-cased"
+                "model_name": "bert-base-cased"
             }
         },
-        "text_unit": "sentence"
+        "do_mask_entity_mentions": true,
+        "mask_token": "[MASK]",
+        "min_perplexity": 50
     },
     "validation_dataset_reader": {
-        "type": "quizbowl",
+        "type": "text_entity",
         "tokenizer": {
             "type": "transformer",
-            "model_name": "xlnet-base-cased",
+            "model_name": "bert-base-cased",
             "max_length": 512
         },
         "token_indexers": {
             "tokens": {
                 "type": "transformer",
-                "model_name": "xlnet-base-cased"
+                "model_name": "bert-base-cased"
             }
-        },
-        "text_unit": "question"
+        }
     },
     "vocabulary": {
         "directory_path": "work/vocab/vocabulary"
@@ -40,14 +44,14 @@
             "token_embedders": {
                 "tokens": {
                     "type": "transformer",
-                    "model_name": "xlnet-base-cased"
+                    "model_name": "bert-base-cased"
                 }
             },
             "allow_unmatched_keys": true
         },
         "text_encoder": {
             "type": "transformer",
-            "pooling_type": "last",
+            "pooling_type": "first",
             "input_dim": 768,
             "output_dim": 768
         },
@@ -70,14 +74,14 @@
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
-            "lr": 1e-4,
+            "lr": 5e-5,
             "weight_decay": 0.01,
             "correct_bias": false
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
             "num_epochs": 10,
-            "num_steps_per_epoch": 4593,
+            "num_steps_per_epoch": 19637,
             "cut_frac": 0.2
         },
         "grad_norm": 1.0,

@@ -2,7 +2,7 @@ import re
 import json
 import logging
 from copy import deepcopy
-from typing import Dict, List, Iterable, Optional, Any
+from typing import Dict, List, Iterable, Optional, Union, Any
 
 from overrides import overrides
 
@@ -36,33 +36,21 @@ logger = logging.getLogger(__name__)
 Optimizer.register('adam_w')(AdamW)
 
 
-@DatasetReader.register('quizbowl')
-class QuizbowlDatasetReader(DatasetReader):
+@DatasetReader.register('text_entity')
+class TextEntityDatasetReader(DatasetReader):
     def __init__(self,
                  tokenizer: Optional[Tokenizer],
                  token_indexers: Dict[str, TokenIndexer],
-                 sentence_splitter: Optional[SentenceSplitter] = None,
-                 use_quiz: bool = True,
-                 use_wiki: bool = False,
-                 wiki_file_path: Optional[str] = None,
-                 text_unit: str = 'sentence',
-                 wiki_text_unit: str = 'sentence',
-                 num_wiki_paragraphs: Optional[int] = None,
                  do_mask_entity_mentions: bool = False,
                  mask_token: str = '',
+                 min_perplexity: Optional[float] = None,
                  lazy: bool = False) -> None:
         super().__init__(lazy=lazy)
         self.tokenizer = tokenizer
         self.token_indexers = token_indexers
-        self.sentence_splitter = sentence_splitter
-        self.use_quiz = use_quiz
-        self.use_wiki = use_wiki
-        self.wiki_file_path = wiki_file_path
-        self.text_unit = text_unit
-        self.wiki_text_unit = wiki_text_unit
-        self.num_wiki_paragraphs = num_wiki_paragraphs
         self.do_mask_entity_mentions = do_mask_entity_mentions
         self.mask_token = mask_token
+        self.min_perplexity = min_perplexity
 
     @overrides
     def text_to_instance(self,
@@ -72,16 +60,17 @@ class QuizbowlDatasetReader(DatasetReader):
         fields = dict()
 
         if self.do_mask_entity_mentions:
+            assert self.mask_token is not None
             assert entity is not None
-            for word in entity.replace('_', ' ').split():
+            for mention in entity.replace('_', ' ').split():
                 if isinstance(self.tokenizer, TransformerTokenizer):
-                    mask_length = len(self.tokenizer.tokenizer.tokenize(word))
+                    mask_length = len(self.tokenizer.tokenize(mention,
+                                                              add_special_tokens=False))
                 else:
-                    mask_length = 1
+                    mask_length = len(self.tokenizer.tokenize(mention))
 
-                assert self.mask_token is not None
-                text = text.replace(word, self.mask_token * mask_length)
-                text = text.replace(word.lower(), self.mask_token * mask_length)
+                text = text.replace(mention, self.mask_token * mask_length)
+                text = text.replace(mention.lower(), self.mask_token * mask_length)
 
         if self.tokenizer is not None:
             tokens = self.tokenizer.tokenize(text)
@@ -97,192 +86,72 @@ class QuizbowlDatasetReader(DatasetReader):
 
         return Instance(fields)
 
-    def _read_quiz(self, file_path) -> Iterable[Instance]:
-        file_path = cached_path(file_path)
-
-        with open(file_path) as dataset_file:
-            for question in json.load(dataset_file)['questions']:
-                if self.text_unit == 'sentence':
-                    if self.sentence_splitter is not None:
-                        sentences = \
-                            self.sentence_splitter.split_sentences(question['text'])
-                    else:
-                        sentences = [question['text'][start:end]
-                                     for start, end in question['tokenizations']]
-
-                    for i, sentence in enumerate(sentences):
-                        sentence = sentence.strip()
-                        if len(sentence) > 0:
-                            metadata = {
-                                'qanta_id': question['qanta_id'],
-                                'text': sentence,
-                                'entity': question['page'],
-                                'text_unit': self.text_unit,
-                                'sentence_id': i
-                            }
-                            instance = self.text_to_instance(
-                                text=sentence,
-                                entity=question['page'],
-                                metadata=metadata
-                            )
-                            yield instance
-                elif self.text_unit == 'question':
-                    question_text = question['text'].strip()
-                    if len(question_text) > 0:
-                        metadata = {
-                            'qanta_id': question['qanta_id'],
-                            'text': question_text,
-                            'entity': question['page'],
-                            'text_unit': self.text_unit
-                        }
-                        instance = self.text_to_instance(
-                            text=question_text,
-                            entity=question['page'],
-                            metadata=metadata
-                        )
-                        yield instance
-                elif self.text_unit == 'sequence':
-                    if self.sentence_splitter is not None:
-                        sentences = \
-                            self.sentence_splitter.split_sentences(question['text'])
-                    else:
-                        sentences = [question['text'][start:end]
-                                     for start, end in question['tokenizations']]
-
-                    sequence = ''
-                    for i, sentence in enumerate(sentences):
-                        sentence = sentence.strip()
-                        if len(sentence) > 0:
-                            sequence = sequence + ' ' + sentence
-                            metadata = {
-                                'qanta_id': question['qanta_id'],
-                                'text': sequence,
-                                'entity': question['page'],
-                                'text_unit': self.text_unit,
-                                'sentence_id': i
-                            }
-                            instance = self.text_to_instance(
-                                text=sequence,
-                                entity=question['page'],
-                                metadata=metadata
-                            )
-                            yield instance
-                else:
-                    raise ValueError(f'Invalid text_unit: {self.text_unit}')
-
-    def _read_wiki(self, file_path) -> Iterable[Instance]:
-        file_path = cached_path(file_path)
-
-        dataset_json = json.load(open(file_path))
-        for page in dataset_json.values():
-            entity = page['title']
-            paragraphs = re.split(r'\n\n+', page['text'])[1:]
-            if self.num_wiki_paragraphs is not None:
-                paragraphs = paragraphs[:self.num_wiki_paragraphs]
-
-            if self.wiki_text_unit == 'paragraph':
-                for i, paragraph in enumerate(paragraphs):
-                    paragraph = paragraph.strip()
-                    if len(paragraph) > 0:
-                        metadata = {
-                            'text': paragraph,
-                            'entity': page['title'],
-                            'text_unit': self.wiki_text_unit,
-                            'paragraph_id': i
-                        }
-                        instance = self.text_to_instance(
-                            text=paragraph,
-                            entity=page['title'],
-                            metadata=metadata
-                        )
-                        yield instance
-            elif self.text_unit == 'sentence':
-                for i, paragraph in enumerate(paragraphs):
-                    for j, sentence in enumerate(
-                            self.sentence_splitter.split_sentences(paragraph)):
-                        sentence = sentence.strip()
-                        if len(sentence) > 0:
-                            metadata = {
-                                'text': sentence,
-                                'entity': page['title'],
-                                'text_unit': self.wiki_text_unit,
-                                'paragraph_id': i,
-                                'sentence_id': j
-                            }
-                            instance = self.text_to_instance(
-                                text=sentence,
-                                entity=page['title'],
-                                metadata=metadata
-                            )
-                            yield instance
-            else:
-                raise KeyError(f'Invalid wiki_text_unit: {self.wiki_text_unit}')
-
     @overrides
-    def _read(self, file_path) -> Iterable[Instance]:
-        if self.use_quiz:
-            logger.info('Reading Quiz data')
-            for i, instance in enumerate(self._read_quiz(file_path)):
-                if i < 10:
-                    logger.info(f'Example:\n{instance}')
+    def _read(self,
+              file_path: Union[str, list]) -> Iterable[Instance]:
+        if isinstance(file_path, list):
+            file_paths = file_path
+        else:
+            file_paths = [file_path]
 
-                yield instance
+        for path in file_paths:
+            path = cached_path(path)
+            logger.info(f'Reading a dataset file at {path}')
+            with open(path) as dataset_file:
+                for i, line in enumerate(dataset_file):
+                    item = json.loads(line)
 
-        if self.use_wiki:
-            logger.info('Reading Wiki data')
-            for i, instance in enumerate(self._read_wiki(self.wiki_file_path)):
-                if i < 10:
-                    logger.info(f'Example:\n{instance}')
+                    if self.min_perplexity is not None and 'perplexity' in item:
+                        if item['perplexity'] < self.min_perplexity:
+                            continue
 
-                yield instance
+                    instance = self.text_to_instance(
+                        text=item['text'],
+                        entity=item['entity'],
+                        metadata=item
+                    )
+                    if i < 20:
+                        logger.info(f'Example: {instance}')
+
+                    yield instance
 
 
 @Tokenizer.register('transformer')
 class TransformerTokenizer(Tokenizer):
     def __init__(self,
                  model_name: str,
-                 add_special_tokens: bool = True,
-                 max_length: int = None,
-                 stride: int = 0,
-                 truncation_strategy: str = "longest_first") -> None:
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.add_special_tokens = add_special_tokens
+                 max_length: int = None) -> None:
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.max_length = max_length
-        self.stride = stride
-        self.truncation_strategy = truncation_strategy
 
     def _tokenize(self,
                   sentence_1: str,
-                  sentence_2: str = None) -> List[Token]:
-        encoded_tokens = self.tokenizer.encode_plus(
+                  sentence_2: str = None,
+                  add_special_tokens: bool = True) -> List[Token]:
+        encoded_tokens = self._tokenizer.encode_plus(
             text=sentence_1,
             text_pair=sentence_2,
-            add_special_tokens=self.add_special_tokens,
+            add_special_tokens=add_special_tokens,
             max_length=self.max_length,
-            stride=self.stride,
-            truncation_strategy=self.truncation_strategy,
             return_tensors=None)
 
         token_ids = encoded_tokens['input_ids']
-        tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
+        tokens = self._tokenizer.convert_ids_to_tokens(token_ids)
         tokens = [Token(text=token) for token in tokens]
         return tokens
 
+    @overrides
+    def tokenize(self,
+                 text: str,
+                 add_special_tokens: bool = True) -> List[Token]:
+        return self._tokenize(text, add_special_tokens=add_special_tokens)
+
     def tokenize_sentence_pair(self,
                                sentence_1: str,
-                               sentence_2: str) -> List[Token]:
-        """
-        This methods properly handels a pair of sentences.
-        """
-        return self._tokenize(sentence_1, sentence_2)
-
-    @overrides
-    def tokenize(self, text: str) -> List[Token]:
-        """
-        This method only handels a single sentence (or sequence) of text.
-        Refer to the ``tokenize_sentence_pair`` method if you have a sentence pair.
-        """
-        return self._tokenize(text)
+                               sentence_2: str,
+                               add_special_tokens: bool = True) -> List[Token]:
+        return self._tokenize(sentence_1, sentence_2,
+                              add_special_tokens=add_special_tokens)
 
 
 @TokenIndexer.register('transformer')
@@ -304,31 +173,6 @@ class TransformerIndexer(TokenIndexer[int]):
         self.namespace = namespace
         self.padding_value = self.tokenizer.pad_token_id
         logger.info(f'Using token indexer padding value of {self.padding_value}')
-        self.added_to_vocabulary = False
-
-    def add_encoding_to_vocabulary(self, vocab: Vocabulary) -> None:
-        """
-        Copies tokens from ```transformers``` model to the specified namespace.
-        Transformers vocab is taken from the <vocab>/<encoder> keys of the tokenizer
-        object.
-        """
-        vocab_field_name = None
-        if hasattr(self.tokenizer, 'vocab'):
-            vocab_field_name = 'vocab'
-        elif hasattr(self.tokenizer, 'encoder'):
-            vocab_field_name = 'encoder'
-        else:
-            logger.warning(
-                """Wasn't able to fetch vocabulary from transformers lib.
-                Neither <vocab> nor <encoder> are the valid fields for vocab.
-                Your tokens will still be correctly indexed, but vocabulary file will
-                not be saved.""")
-
-        if vocab_field_name is not None:
-            pretrained_vocab = getattr(self.tokenizer, vocab_field_name)
-            for word, idx in pretrained_vocab.items():
-                vocab._token_to_index[self.namespace][word] = idx
-                vocab._index_to_token[self.namespace][idx] = word
 
     @overrides
     def count_vocab_items(self,
@@ -342,10 +186,6 @@ class TransformerIndexer(TokenIndexer[int]):
                           tokens: List[Token],
                           vocabulary: Vocabulary,
                           index_name: str) -> Dict[str, List[int]]:
-        if not self.added_to_vocabulary:
-            self.add_encoding_to_vocabulary(vocabulary)
-            self.added_to_vocabulary = True
-
         tokens = [token.text for token in tokens]
         token_ids = self.tokenizer.convert_tokens_to_ids(tokens)
 
@@ -375,21 +215,6 @@ class TransformerIndexer(TokenIndexer[int]):
 
         return tensors
 
-    def __eq__(self, other):
-        if isinstance(other, TransformerIndexer):
-            for key in self.__dict__:
-                if key == 'tokenizer':
-                    # This is a reference to a function in the huggingface code, which
-                    # we can't really modify to make this clean.  So we special-case it.
-                    continue
-
-                if self.__dict__[key] != other.__dict__[key]:
-                    return False
-
-            return True
-
-        return NotImplemented
-
 
 @TokenEmbedder.register('transformer')
 class TransformerEmbedder(TokenEmbedder):
@@ -399,8 +224,7 @@ class TransformerEmbedder(TokenEmbedder):
                  dropout_masking: Optional[float] = None,
                  init_weights: bool = False) -> None:
         super(TransformerEmbedder, self).__init__()
-        self.transformer_model = AutoModel.from_pretrained(model_name,
-                                                           output_hidden_states=True)
+        self.transformer_model = AutoModel.from_pretrained(model_name)
         self.mask_token_id = AutoTokenizer.from_pretrained(model_name).mask_token_id
 
         self.layer_indices = layer_indices
@@ -414,27 +238,11 @@ class TransformerEmbedder(TokenEmbedder):
     def get_output_dim(self):
         return self.output_dim
 
-    def _dropout_mask_tokens(self,
-                             token_ids: torch.LongTensor,
-                             mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        mask_probs = torch.rand_like(token_ids, dtype=torch.float)
-        if mask is not None:
-            mask_probs *= mask
-
-        token_ids = torch.where(mask_probs > (1.0 - self.dropout_masking),
-            torch.full_like(token_ids, self.mask_token_id), token_ids)
-
-        return token_ids
-
-
     def forward(self,
                 token_ids: torch.LongTensor,
                 mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        if self.dropout_masking is not None:
-            token_ids = self._dropout_mask_tokens(token_ids, mask=mask)
-
-        hidden_states = self.transformer_model(token_ids, attention_mask=mask)[-1]
-        return torch.cat([hidden_states[i] for i in self.layer_indices], dim=-1)
+        last_hidden_state = self.transformer_model(token_ids, attention_mask=mask)[0]
+        return last_hidden_state
 
 
 @Seq2VecEncoder.register('transformer')
@@ -454,7 +262,7 @@ class TransformerPooler(Seq2VecEncoder):
 
         if do_projection:
             self.projection = nn.Linear(input_dim, output_dim)
-            nn.init.normal_(self.projection.weight, mean=0.0, std=0.02)
+            nn.init.xavier_uniform_(self.projection.weight)
 
         if activation is None:
             pass
@@ -548,8 +356,6 @@ class QuizbowlGuesser(Model):
                 metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
         output = dict()
 
-        batch_size = int(entity.size(0))
-
         mask = get_text_field_mask(tokens)
 
         embedded_tokens = self.text_field_embedder(tokens, mask=mask)
@@ -590,7 +396,7 @@ class QuizbowlGuesser(Model):
         batch_correct_entity = [m['entity'] for m in output_dict['metadata']]
 
         for log_probs, correct_entity in zip(batch_log_probs, batch_correct_entity):
-            top_probs, top_ids = torch.sort(log_probs, descending=True)
+            _, top_ids = torch.sort(log_probs, descending=True)
             top_entities = [self.vocab.get_index_to_token_vocabulary('entities')[i]
                             for i in top_ids.tolist()]
 
@@ -626,7 +432,7 @@ class QuizbowlGuesser(Model):
 @Predictor.register('quizbowl')
 class QuizbowlPredictor(Predictor):
     def predict(self, sentence: str) -> JsonDict:
-        return self.predict_json({"sentence": sentence})
+        return self.predict_json({'sentence': sentence})
 
     @overrides
     def _json_to_instance(self,
