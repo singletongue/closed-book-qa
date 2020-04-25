@@ -4,66 +4,67 @@
     "dataset_reader": {
         "type": "text_entity",
         "tokenizer": {
-            "type": "transformer",
-            "model_name": "roberta-base",
+            "type": "pretrained_transformer",
+            "model_name": "xlnet-base-cased",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
-                "type": "transformer",
-                "model_name": "roberta-base"
+                "type": "pretrained_transformer",
+                "model_name": "xlnet-base-cased"
             }
         }
     },
     "validation_dataset_reader": {
         "type": "text_entity",
         "tokenizer": {
-            "type": "transformer",
-            "model_name": "roberta-base",
+            "type": "pretrained_transformer",
+            "model_name": "xlnet-base-cased",
             "max_length": 512
         },
         "token_indexers": {
             "tokens": {
-                "type": "transformer",
-                "model_name": "roberta-base"
+                "type": "pretrained_transformer",
+                "model_name": "xlnet-base-cased"
             }
         }
     },
     "vocabulary": {
-        "directory_path": "work/vocab/vocabulary"
+        "type": "from_files",
+        "directory": "work/vocab/vocabulary"
     },
     "model": {
         "type": "quizbowl_guesser",
         "text_field_embedder": {
             "token_embedders": {
                 "tokens": {
-                    "type": "transformer",
-                    "model_name": "roberta-base"
+                    "type": "patched_pretrained_transformer",
+                    "model_name": "xlnet-base-cased"
                 }
-            },
-            "allow_unmatched_keys": true
+            }
         },
-        "text_encoder": {
-            "type": "transformer",
-            "pooling_type": "first",
-            "input_dim": 768,
-            "output_dim": 768
+        "seq2vec_encoder": {
+            "type": "cls_pooler",
+            "embedding_dim": 768,
+            "cls_is_last_token": true
         },
-        "dropout_encodings": 0.1
+        "dropout": 0.1
     },
-    "iterator": {
-        "type": "bucket",
-        "sorting_keys": [["tokens", "num_tokens"]],
-        "batch_size": 128
+    "data_loader": {
+        "batch_sampler": {
+            "type": "bucket",
+            "batch_size": 64
+        }
     },
-    "validation_iterator": {
-        "type": "bucket",
-        "sorting_keys": [["tokens", "num_tokens"]],
-        "batch_size": 32
+    "validation_data_loader": {
+        "batch_sampler": {
+            "type": "bucket",
+            "batch_size": 32
+        }
     },
     "trainer": {
         "optimizer": {
-            "type": "adam_w",
+            "type": "pretrained_transformer_adam_w",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
@@ -75,13 +76,15 @@
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
             "num_epochs": 10,
-            "num_steps_per_epoch": 4593,
+            "num_steps_per_epoch": 9186,
             "cut_frac": 0.2
+        },
+        "checkpointer": {
+            "num_serialized_models_to_keep": 1
         },
         "grad_norm": 1.0,
         "num_epochs": 10,
-        "cuda_device": [0],
-        "validation_metric": "+mrr",
-        "num_serialized_models_to_keep": 1
+        "cuda_device": 0,
+        "validation_metric": "+mrr"
     }
 }
