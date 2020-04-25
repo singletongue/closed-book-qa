@@ -10,7 +10,7 @@ export PYTHONIOENCODING=utf-8
 
 source $HOME/.raiden/setup_gpu.sh
 source /fefs/opt/dgx/env_set/nvcr-pytorch-2001.sh
-source venv/emnlp2020/bin/activate
+source venv/bin/activate
 
 if [ -d $SERIALIZATION_DIR ]; then
     allennlp train $CONFIG_FILE \
