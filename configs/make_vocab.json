@@ -5,5 +5,8 @@
         "tokenizer": null,
         "token_indexers": {}
     },
-    "datasets_for_vocab_creation": ["train"]
+    "datasets_for_vocab_creation": ["train"],
+    "model": null,
+    "data_loader": null,
+    "trainer": null
 }

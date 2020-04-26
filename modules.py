@@ -62,7 +62,7 @@ class TextEntityDatasetReader(DatasetReader):
             for mention in entity.replace('_', ' ').split():
                 if isinstance(self.tokenizer, PretrainedTransformerTokenizer):
                     mask_length = len(
-                        self.tokenizer.intra_word_tokenize([mention])[0][0])
+                        self.tokenizer.intra_word_tokenize_in_id([mention])[0])
                 else:
                     mask_length = len(self.tokenizer.tokenize(mention))
 

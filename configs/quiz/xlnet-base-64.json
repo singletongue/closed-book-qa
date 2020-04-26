@@ -29,10 +29,7 @@
             }
         }
     },
-    "vocabulary": {
-        "type": "from_files",
-        "directory": "work/vocab/vocabulary"
-    },
+    "datasets_for_vocab_creation": ["train"],
     "model": {
         "type": "quizbowl_guesser",
         "text_field_embedder": {
@@ -64,14 +61,13 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "pretrained_transformer_adam_w",
+            "type": "adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
             "lr": 5e-5,
-            "weight_decay": 0.01,
-            "correct_bias": false
+            "weight_decay": 0.01
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
