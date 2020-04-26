@@ -17,41 +17,35 @@ $ cat work/dataset/train_sentence.json work/dataset/wiki_sentence_blingfire.json
 $ cat work/dataset/train_sentence.json work/dataset/wiki-fp_sentence_blingfire.json > work/dataset/train_sentence_wiki-fp_sentence_blingfire.json
 ```
 
-## Make vocabulary
-
-```sh
-$ allennlp train --dry-run --serialization-dir work/vocabulary --include-package modules configs/quiz/bert-base.json
-```
-
 ## Training
 
 ```sh
 $ mkdir work/quiz
-$ qsub -v CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/quiz/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/quiz/bert-base -N quiz train_raiden.sh
 
 $ mkdir work/wiki
-$ qsub -v CONFIG_FILE=configs/wiki/bert-base.json,SERIALIZATION_DIR=work/wiki/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki/bert-base.json,SERIALIZATION_DIR=work/wiki/bert-base -N wiki train_raiden.sh
 
 $ mkdir work/wiki-fp
-$ qsub -v CONFIG_FILE=configs/wiki-fp/bert-base.json,SERIALIZATION_DIR=work/wiki-fp/bert-base -N bert-base train_raiden.sh
-
-$ mkdir work/quiz_to_wiki
-$ qsub -v CONFIG_FILE=configs/quiz_to_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_to_wiki/bert-base -N bert-base train_raiden.sh
-
-$ mkdir work/wiki_to_quiz
-$ qsub -v CONFIG_FILE=configs/wiki_to_quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_to_quiz/bert-base -N bert-base train_raiden.sh
-
-$ mkdir work/quiz_to_wiki-fp
-$ qsub -v CONFIG_FILE=configs/quiz_to_wiki-fp/bert-base.json,SERIALIZATION_DIR=work/quiz_to_wiki-fp/bert-base -N bert-base train_raiden.sh
-
-$ mkdir work/wiki-fp_to_quiz
-$ qsub -v CONFIG_FILE=configs/wiki-fp_to_quiz/bert-base.json,SERIALIZATION_DIR=work/wiki-fp_to_quiz/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/wiki-fp/bert-base.json,SERIALIZATION_DIR=work/wiki-fp/bert-base -N wiki-fp train_raiden.sh
 
 $ mkdir work/quiz_and_wiki
-$ qsub -v CONFIG_FILE=configs/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki/bert-base -N quiz_and_wiki train_raiden.sh
 
 $ mkdir work/quiz_and_wiki-fp
-$ qsub -v CONFIG_FILE=configs/quiz_and_wiki-fp/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki-fp/bert-base -N bert-base train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz_and_wiki-fp/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki-fp/bert-base -N quiz_and_wiki-fp train_raiden.sh
+
+$ mkdir work/quiz_to_wiki
+$ qsub -v CONFIG_FILE=configs/quiz_to_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_to_wiki/bert-base -N quiz_to_wiki train_raiden.sh
+
+$ mkdir work/wiki_to_quiz
+$ qsub -v CONFIG_FILE=configs/wiki_to_quiz/bert-base.json,SERIALIZATION_DIR=work/wiki_to_quiz/bert-base -N wiki_to_quiz train_raiden.sh
+
+$ mkdir work/quiz_to_wiki-fp
+$ qsub -v CONFIG_FILE=configs/quiz_to_wiki-fp/bert-base.json,SERIALIZATION_DIR=work/quiz_to_wiki-fp/bert-base -N quiz_to_wiki-fp train_raiden.sh
+
+$ mkdir work/wiki-fp_to_quiz
+$ qsub -v CONFIG_FILE=configs/wiki-fp_to_quiz/bert-base.json,SERIALIZATION_DIR=work/wiki-fp_to_quiz/bert-base -N wiki-fp_to_quiz train_raiden.sh
 ```
 
 ---
