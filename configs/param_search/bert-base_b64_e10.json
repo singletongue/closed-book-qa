@@ -5,13 +5,13 @@
         "type": "text_entity",
         "tokenizer": {
             "type": "pretrained_transformer",
-            "model_name": "xlnet-base-cased",
+            "model_name": "bert-base-cased",
             "max_length": 64
         },
         "token_indexers": {
             "tokens": {
                 "type": "pretrained_transformer",
-                "model_name": "xlnet-base-cased"
+                "model_name": "bert-base-cased"
             }
         }
     },
@@ -19,31 +19,34 @@
         "type": "text_entity",
         "tokenizer": {
             "type": "pretrained_transformer",
-            "model_name": "xlnet-base-cased",
+            "model_name": "bert-base-cased",
             "max_length": 512
         },
         "token_indexers": {
             "tokens": {
                 "type": "pretrained_transformer",
-                "model_name": "xlnet-base-cased"
+                "model_name": "bert-base-cased"
             }
         }
     },
-    "datasets_for_vocab_creation": ["train"],
+    "vocabulary": {
+        "type": "from_files",
+        "directory": "work/vocab/bert-base/vocabulary"
+    },
     "model": {
         "type": "quizbowl_guesser",
         "text_field_embedder": {
             "token_embedders": {
                 "tokens": {
-                    "type": "patched_pretrained_transformer",
-                    "model_name": "xlnet-base-cased"
+                    "type": "pretrained_transformer",
+                    "model_name": "bert-base-cased"
                 }
             }
         },
         "seq2vec_encoder": {
             "type": "cls_pooler",
             "embedding_dim": 768,
-            "cls_is_last_token": true
+            "cls_is_last_token": false
         },
         "dropout": 0.1
     },
@@ -61,13 +64,14 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "adamw",
+            "type": "pretrained_transformer_adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
             "lr": 5e-5,
-            "weight_decay": 0.01
+            "weight_decay": 0.01,
+            "correct_bias": false
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
