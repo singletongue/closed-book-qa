@@ -17,9 +17,21 @@ $ cat work/dataset/train_sentence.json work/dataset/wiki_sentence_blingfire.json
 $ cat work/dataset/train_sentence.json work/dataset/wiki-fp_sentence_blingfire.json > work/dataset/train_sentence_wiki-fp_sentence_blingfire.json
 ```
 
+## make vocabulary files
+
+```sh
+$ mkdir -p work/vocab
+$ allennlp train --dry-run --serialization-dir work/vocab/bert-base --include-package modules configs/make_vocab/bert-base.json
+```
+
 ## Training
 
 ```sh
+$ mkdir work/param_search
+$ qsub -v CONFIG_FILE=configs/param_search/bert-base_b64_e6.json,SERIALIZATION_DIR=work/param_search/bert-base_b64_e6 -N b64_e6 train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/param_search/bert-base_b64_e8.json,SERIALIZATION_DIR=work/param_search/bert-base_b64_e8 -N b64_e8 train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/param_search/bert-base_b64_e10.json,SERIALIZATION_DIR=work/param_search/bert-base_b64_e10 -N b64_e10 train_raiden.sh
+
 $ mkdir work/quiz
 $ qsub -v CONFIG_FILE=configs/quiz/bert-base.json,SERIALIZATION_DIR=work/quiz/bert-base -N quiz train_raiden.sh
 
@@ -30,7 +42,7 @@ $ mkdir work/wiki-fp
 $ qsub -v CONFIG_FILE=configs/wiki-fp/bert-base.json,SERIALIZATION_DIR=work/wiki-fp/bert-base -N wiki-fp train_raiden.sh
 
 $ mkdir work/quiz_and_wiki
-$ qsub -v CONFIG_FILE=configs/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki/bert-base -N quiz_and_wiki train_raiden.sh
+$ qsub -v CONFIG_FILE=configs/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki/bert-base -N quiz_and_wiki -jc gpu-container_g1.72h train_raiden.sh
 
 $ mkdir work/quiz_and_wiki-fp
 $ qsub -v CONFIG_FILE=configs/quiz_and_wiki-fp/bert-base.json,SERIALIZATION_DIR=work/quiz_and_wiki-fp/bert-base -N quiz_and_wiki-fp train_raiden.sh
@@ -58,28 +70,28 @@ $ allennlp evaluate --output-file work/quiz/bert-base/metrics_dev.json --cuda-de
 $ allennlp evaluate --output-file work/quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz/bert-base/model.tar.gz work/dataset/test_question.json
 
 $ allennlp evaluate --output-file work/wiki/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki/bert-base_ppl-50/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-50/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki/bert-base_ppl-100/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-100/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki/bert-base_ppl-150/metrics_dev.json --cuda-device 0 --include-package modules work/wiki/bert-base_ppl-150/model.tar.gz work/dataset/dev_question.json
 $ allennlp evaluate --output-file work/wiki/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki/bert-base/model.tar.gz work/dataset/test_question.json
 
 $ allennlp evaluate --output-file work/wiki-fp/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp/bert-base/model.tar.gz work/dataset/dev_question.json
 $ allennlp evaluate --output-file work/wiki-fp/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp/bert-base/model.tar.gz work/dataset/test_question.json
 
-$ allennlp evaluate --output-file work/wiki_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-50/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-50/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-100/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-100/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki_quiz/bert-base_ppl-150/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base_ppl-150/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki_quiz/bert-base/model.tar.gz work/dataset/test_question.json
+$ allennlp evaluate --output-file work/quiz_and_wiki/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/quiz_and_wiki/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/quiz_and_wiki/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz_and_wiki/bert-base/model.tar.gz work/dataset/test_question.json
 
-$ allennlp evaluate --output-file work/wiki-fp_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki-fp_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp_quiz/bert-base/model.tar.gz work/dataset/test_question.json
+$ allennlp evaluate --output-file work/quiz_and_wiki-fp/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/quiz_and_wiki-fp/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/quiz_and_wiki-fp/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz_and_wiki-fp/bert-base/model.tar.gz work/dataset/test_question.json
 
-$ allennlp evaluate --output-file work/wiki_quiz_mixed/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_quiz_mixed/bert-base/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki_quiz_mixed/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki_quiz_mixed/bert-base/model.tar.gz work/dataset/test_question.json
+allennlp evaluate --output-file work/quiz_to_wiki/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/quiz_to_wiki/bert-base/model.tar.gz work/dataset/dev_question.json
+allennlp evaluate --output-file work/quiz_to_wiki/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz_to_wiki/bert-base/model.tar.gz work/dataset/test_question.json
 
-$ allennlp evaluate --output-file work/wiki-fp_quiz_mixed/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp_quiz_mixed/bert-base/model.tar.gz work/dataset/dev_question.json
-$ allennlp evaluate --output-file work/wiki-fp_quiz_mixed/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp_quiz_mixed/bert-base/model.tar.gz work/dataset/test_question.json
+$ allennlp evaluate --output-file work/wiki_to_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki_to_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki_to_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki_to_quiz/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/quiz_to_wiki-fp/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/quiz_to_wiki-fp/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/quiz_to_wiki-fp/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/quiz_to_wiki-fp/bert-base/model.tar.gz work/dataset/test_question.json
+
+$ allennlp evaluate --output-file work/wiki-fp_to_quiz/bert-base/metrics_dev.json --cuda-device 0 --include-package modules work/wiki-fp_to_quiz/bert-base/model.tar.gz work/dataset/dev_question.json
+$ allennlp evaluate --output-file work/wiki-fp_to_quiz/bert-base/metrics_test.json --cuda-device 0 --include-package modules work/wiki-fp_to_quiz/bert-base/model.tar.gz work/dataset/test_question.json
 ```
 
 ```sh
