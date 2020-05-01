@@ -31,7 +31,7 @@
     },
     "vocabulary": {
         "type": "from_files",
-        "directory": "work/vocab/vocabulary"
+        "directory": "work/vocab/bert-base/vocabulary"
     },
     "model": {
         "type": "quizbowl_guesser",
@@ -64,17 +64,18 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "adamw",
+            "type": "pretrained_transformer_adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
             "lr": 5e-5,
-            "weight_decay": 0.01
+            "weight_decay": 0.01,
+            "correct_bias": false
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
-            "num_epochs": 6,
+            "num_epochs": 8,
             "num_steps_per_epoch": 9186,
             "cut_frac": 0.2
         },
@@ -82,7 +83,7 @@
             "num_serialized_models_to_keep": 1
         },
         "grad_norm": 1.0,
-        "num_epochs": 6,
+        "num_epochs": 8,
         "cuda_device": 0,
         "validation_metric": "+mrr"
     }

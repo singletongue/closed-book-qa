@@ -29,7 +29,10 @@
             }
         }
     },
-    "datasets_for_vocab_creation": ["train"],
+    "vocabulary": {
+        "type": "from_files",
+        "directory": "work/vocab/bert-base/vocabulary"
+    },
     "model": {
         "type": "from_archive",
         "archive_file": "work/wiki-fp/bert-base/model.tar.gz"
@@ -48,13 +51,14 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "adamw",
+            "type": "pretrained_transformer_adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
             ],
             "lr": 5e-5,
-            "weight_decay": 0.01
+            "weight_decay": 0.01,
+            "correct_bias": false
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
