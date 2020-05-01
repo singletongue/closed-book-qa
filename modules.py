@@ -2,12 +2,13 @@ import json
 import logging
 import re
 from copy import deepcopy
-from typing import Dict, List, Iterable, Optional, Union, Any
+from typing import Dict, List, Iterable, Optional, Tuple, Union, Any
 
 from overrides import overrides
 
 import numpy
 import torch
+import transformers
 from torch import nn
 from torch.nn import functional as F
 
@@ -23,16 +24,12 @@ from allennlp.modules import (TokenEmbedder, TextFieldEmbedder,
                               Seq2SeqEncoder, Seq2VecEncoder, FeedForward)
 from allennlp.modules.token_embedders import Embedding, PretrainedTransformerEmbedder
 from allennlp.nn.util import get_text_field_mask, masked_mean, masked_max
-from allennlp.training.optimizers import Optimizer
+from allennlp.training.optimizers import Optimizer, make_parameter_groups
 from allennlp.training.metrics import Metric, CategoricalAccuracy
 from allennlp.predictors.predictor import Predictor
-from transformers import AdamW, XLNetConfig
 
 
 logger = logging.getLogger(__name__)
-
-
-Optimizer.register('pretrained_transformer_adam_w')(AdamW)
 
 
 @DatasetReader.register('text_entity')
@@ -111,12 +108,31 @@ class PatchedPretrainedTransformerEmbedder(PretrainedTransformerEmbedder):
     @overrides
     def _number_of_token_type_embeddings(self):
         config = self.transformer_model.config
-        if isinstance(config, XLNetConfig):
+        if isinstance(config, transformers.XLNetConfig):
             return 3
         elif hasattr(config, "type_vocab_size"):
             return config.type_vocab_size
         else:
             return 0
+
+
+@Optimizer.register('pretrained_transformer_adamw')
+class PretrainedTransformerAdamwOptimizer(Optimizer, transformers.AdamW):
+    def __init__(self,
+                 model_parameters: List[Tuple[str, torch.nn.Parameter]],
+                 parameter_groups: List[Tuple[List[str], Dict[str, Any]]] = None,
+                 lr: float = 1e-3,
+                 betas: Tuple[float, float] = (0.9, 0.999),
+                 eps: float = 1e-6,
+                 weight_decay: float = 0.0,
+                 correct_bias: bool = True) -> None:
+        super().__init__(
+            params=make_parameter_groups(model_parameters, parameter_groups),
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=weight_decay,
+            correct_bias=correct_bias)
 
 
 @Model.register('quizbowl_guesser')
