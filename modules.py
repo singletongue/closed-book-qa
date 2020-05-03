@@ -221,7 +221,7 @@ class QuizbowlGuesser(Model):
         for prediction, label in zip(prediction_list, label_list):
             top_label_ids = prediction.argsort(dim=-1, descending=True)
             top_labels = [self.vocab.get_index_to_token_vocabulary('entities')[i]
-                          for i in top_label_ids]
+                          for i in top_label_ids.tolist()]
 
             if label in top_labels:
                 rank = top_labels.index(label) + 1
