@@ -1,6 +1,6 @@
 {
-    "train_data_path": "work/dataset/train_sentence.json",
-    "validation_data_path": "work/dataset/dev_question.json",
+    "train_data_path": "work/dataset/triviaqa/train_question_wiki_sentence_blingfire.json",
+    "validation_data_path": "work/dataset/triviaqa/dev_question.json",
     "dataset_reader": {
         "type": "text_entity",
         "tokenizer": {
@@ -13,7 +13,9 @@
                 "type": "pretrained_transformer",
                 "model_name": "bert-base-cased"
             }
-        }
+        },
+        "do_mask_entity_mentions": true,
+        "mask_token": "[MASK]"
     },
     "validation_dataset_reader": {
         "type": "text_entity",
@@ -31,10 +33,10 @@
     },
     "vocabulary": {
         "type": "from_files",
-        "directory": "work/vocab/bert-base/vocabulary"
+        "directory": "work/triviaqa/vocab/bert-base/vocabulary"
     },
     "model": {
-        "type": "quizbowl_guesser",
+        "type": "quiz",
         "text_field_embedder": {
             "token_embedders": {
                 "tokens": {
@@ -53,7 +55,7 @@
     "data_loader": {
         "batch_sampler": {
             "type": "bucket",
-            "batch_size": 64
+            "batch_size": 128
         }
     },
     "validation_data_loader": {
@@ -64,7 +66,7 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "pretrained_transformer_adamw",
+            "type": "huggingface_adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]
@@ -75,15 +77,15 @@
         },
         "learning_rate_scheduler": {
             "type": "slanted_triangular",
-            "num_epochs": 6,
-            "num_steps_per_epoch": 9186,
+            "num_epochs": 10,
+            "num_steps_per_epoch": 23833,
             "cut_frac": 0.2
         },
         "checkpointer": {
             "num_serialized_models_to_keep": 1
         },
         "grad_norm": 1.0,
-        "num_epochs": 6,
+        "num_epochs": 10,
         "cuda_device": 0,
         "validation_metric": "+mrr"
     }

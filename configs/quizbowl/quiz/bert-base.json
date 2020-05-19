@@ -1,6 +1,6 @@
 {
-    "train_data_path": "work/dataset/train_sentence.json",
-    "validation_data_path": "work/dataset/dev_question.json",
+    "train_data_path": "work/dataset/quizbowl/train_sentence.json",
+    "validation_data_path": "work/dataset/quizbowl/dev_question.json",
     "dataset_reader": {
         "type": "text_entity",
         "tokenizer": {
@@ -31,10 +31,10 @@
     },
     "vocabulary": {
         "type": "from_files",
-        "directory": "work/vocab/bert-base/vocabulary"
+        "directory": "work/quizbowl/vocab/bert-base/vocabulary"
     },
     "model": {
-        "type": "quizbowl_guesser",
+        "type": "quiz",
         "text_field_embedder": {
             "token_embedders": {
                 "tokens": {
@@ -64,7 +64,7 @@
     },
     "trainer": {
         "optimizer": {
-            "type": "pretrained_transformer_adamw",
+            "type": "huggingface_adamw",
             "parameter_groups": [
                 [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
                 [["entity_embedder"], {"lr": 2e-4}]

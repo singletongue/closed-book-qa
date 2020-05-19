@@ -58,8 +58,8 @@ class TextEntityDatasetReader(DatasetReader):
             assert entity is not None
             for mention in entity.replace('_', ' ').split():
                 if isinstance(self.tokenizer, PretrainedTransformerTokenizer):
-                    mask_length = len(
-                        self.tokenizer.intra_word_tokenize_in_id([mention])[0])
+                    mask_length = len(self.tokenizer.tokenize(mention)) \
+                        - self.tokenizer.num_special_tokens_for_sequence()
                 else:
                     mask_length = len(self.tokenizer.tokenize(mention))
 
@@ -100,43 +100,8 @@ class TextEntityDatasetReader(DatasetReader):
                 yield instance
 
 
-@TokenEmbedder.register('patched_pretrained_transformer')
-class PatchedPretrainedTransformerEmbedder(PretrainedTransformerEmbedder):
-    def __init__(self, model_name: str, max_length: int = None) -> None:
-        super().__init__(model_name, max_length=max_length)
-
-    @overrides
-    def _number_of_token_type_embeddings(self):
-        config = self.transformer_model.config
-        if isinstance(config, transformers.XLNetConfig):
-            return 3
-        elif hasattr(config, "type_vocab_size"):
-            return config.type_vocab_size
-        else:
-            return 0
-
-
-@Optimizer.register('pretrained_transformer_adamw')
-class PretrainedTransformerAdamwOptimizer(Optimizer, transformers.AdamW):
-    def __init__(self,
-                 model_parameters: List[Tuple[str, torch.nn.Parameter]],
-                 parameter_groups: List[Tuple[List[str], Dict[str, Any]]] = None,
-                 lr: float = 1e-3,
-                 betas: Tuple[float, float] = (0.9, 0.999),
-                 eps: float = 1e-6,
-                 weight_decay: float = 0.0,
-                 correct_bias: bool = True) -> None:
-        super().__init__(
-            params=make_parameter_groups(model_parameters, parameter_groups),
-            lr=lr,
-            betas=betas,
-            eps=eps,
-            weight_decay=weight_decay,
-            correct_bias=correct_bias)
-
-
-@Model.register('quizbowl_guesser')
-class QuizbowlGuesser(Model):
+@Model.register('quiz')
+class QuizGuesser(Model):
     def __init__(self,
                  vocab: Vocabulary,
                  text_field_embedder: TextFieldEmbedder,
@@ -145,7 +110,7 @@ class QuizbowlGuesser(Model):
                  feedforward: Optional[FeedForward] = None,
                  dropout: float = 0.0,
                  do_batch_norm: bool = False) -> None:
-        super(QuizbowlGuesser, self).__init__(vocab)
+        super(QuizGuesser, self).__init__(vocab)
         self.text_field_embedder = text_field_embedder
         self.seq2seq_encoder = seq2seq_encoder
         self.seq2vec_encoder = seq2vec_encoder
@@ -158,7 +123,8 @@ class QuizbowlGuesser(Model):
 
         num_entities = vocab.get_vocab_size('entities')
         self.entity_embedder = Embedding(entity_embedding_dim, num_entities,
-                                         vocab_namespace='entities')
+                                         vocab_namespace='entities',
+                                         padding_index=vocab.get_token_index(vocab._oov_token, namespace='entities'))
 
         self.dropout = nn.Dropout(dropout)
         if do_batch_norm:
@@ -249,8 +215,8 @@ class QuizbowlGuesser(Model):
         return metrics
 
 
-@Predictor.register('quizbowl')
-class QuizbowlPredictor(Predictor):
+@Predictor.register('quiz')
+class QuizPredictor(Predictor):
     def predict(self, sentence: str) -> JsonDict:
         return self.predict_json({'sentence': sentence})
 

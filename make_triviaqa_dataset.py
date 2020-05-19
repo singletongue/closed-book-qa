@@ -13,20 +13,27 @@ def clean_text(text):
     return text
 
 
+def normalize_entity_token(entity):
+    return unquote(entity.strip()).replace(' ', '_')
+
+
 def process_triviaqa_dataset(dataset_path,
                              min_question_length=0):
     loaded_dataset = json.load(open(dataset_path))
 
     for item in tqdm(loaded_dataset['Data']):
-        if 'Answer' in item:
+        question_id = item['QuestionId']
+
+        if args.ignore_answer:
+            answer_entity = None
+        else:
             answer = item['Answer']
             if answer['Type'] != 'WikipediaEntity':
+                logger.warning('Skipped {}: No WikipediaEntity answer'.format(question_id))
                 continue
 
-            answer_entity = clean_text(answer['MatchedWikiEntityName'])
+            answer_entity = normalize_entity_token(answer['MatchedWikiEntityName'])
             assert answer_entity
-        else:
-            answer_entity = None
 
         question = clean_text(item['Question'])
         assert question
@@ -36,7 +43,7 @@ def process_triviaqa_dataset(dataset_path,
             continue
 
         item = {
-            'question_id': item['QuestionId'],
+            'question_id': question_id,
             'text': question,
             'entity': answer_entity,
         }
@@ -57,5 +64,6 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_file', type=str, required=True)
     parser.add_argument('--output_file', type=str, required=True)
     parser.add_argument('--min_question_length', type=int, default=1)
+    parser.add_argument('--ignore_answer', action='store_true')
     args = parser.parse_args()
     main(args)
