@@ -1,5 +1,5 @@
 {
-    "train_data_path": "work/dataset/train_sentence.json",
+    "train_data_path": "work/dataset/quizbowl/train_sentence.json",
     "dataset_reader": {
         "type": "text_entity",
         "tokenizer": {
@@ -15,7 +15,7 @@
         }
     },
     "model": {
-        "type": "quizbowl_guesser",
+        "type": "quiz",
         "text_field_embedder": {
             "token_embedders": {
                 "tokens": {
@@ -34,38 +34,10 @@
     "data_loader": {
         "batch_sampler": {
             "type": "bucket",
-            "batch_size": 128
-        }
-    },
-    "validation_data_loader": {
-        "batch_sampler": {
-            "type": "bucket",
-            "batch_size": 32
+            "batch_size": 1
         }
     },
     "trainer": {
-        "optimizer": {
-            "type": "pretrained_transformer_adamw",
-            "parameter_groups": [
-                [["bias", "LayerNorm.weight"], {"weight_decay": 0.0}],
-                [["entity_embedder"], {"lr": 2e-4}]
-            ],
-            "lr": 5e-5,
-            "weight_decay": 0.01,
-            "correct_bias": false
-        },
-        "learning_rate_scheduler": {
-            "type": "slanted_triangular",
-            "num_epochs": 10,
-            "num_steps_per_epoch": 4593,
-            "cut_frac": 0.2
-        },
-        "checkpointer": {
-            "num_serialized_models_to_keep": 1
-        },
-        "grad_norm": 1.0,
-        "num_epochs": 10,
-        "cuda_device": 0,
-        "validation_metric": "+mrr"
+        "optimizer": null
     }
 }

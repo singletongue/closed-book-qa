@@ -34,21 +34,8 @@
         "directory": "work/triviaqa/vocab/bert-base/vocabulary"
     },
     "model": {
-        "type": "quiz",
-        "text_field_embedder": {
-            "token_embedders": {
-                "tokens": {
-                    "type": "pretrained_transformer",
-                    "model_name": "bert-base-cased"
-                }
-            }
-        },
-        "seq2vec_encoder": {
-            "type": "cls_pooler",
-            "embedding_dim": 768,
-            "cls_is_last_token": false
-        },
-        "dropout": 0.1
+        "type": "from_archive",
+        "archive_file": "work/triviaqa/wiki/bert-base/model.tar.gz"
     },
     "data_loader": {
         "batch_sampler": {

@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+from html import unescape
 
 from logzero import logger
 from tqdm import tqdm
@@ -19,6 +20,10 @@ def process_text(text):
     text = ' '.join(text.strip().split())
     text = text.strip()
     return text
+
+
+def normalize_entity_token(entity):
+    return unescape(entity.strip()).replace(' ', '_')
 
 
 def process_quiz_dataset(dataset_path,
@@ -47,6 +52,8 @@ def process_quiz_dataset(dataset_path,
         if do_process_text:
             texts = [process_text(t) for t in texts if process_text(t)]
 
+        entity = normalize_entity_token(question['page'])
+
         for i, text in enumerate(texts):
             if len(text) < min_text_length:
                 logger.warning(f'Skipped (too short text): {text}')
@@ -55,7 +62,7 @@ def process_quiz_dataset(dataset_path,
             item = {
                 'qanta_id': question['qanta_id'],
                 'text': text,
-                'entity': question['page'],
+                'entity': entity,
                 'text_unit': text_unit,
             }
             if text_unit in ('sentence', 'sequence'):
