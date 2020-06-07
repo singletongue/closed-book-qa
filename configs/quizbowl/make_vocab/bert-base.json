@@ -1,0 +1,43 @@
+{
+    "train_data_path": "work/dataset/quizbowl/train_sentence.json",
+    "dataset_reader": {
+        "type": "text_entity",
+        "tokenizer": {
+            "type": "pretrained_transformer",
+            "model_name": "bert-base-cased",
+            "max_length": 64
+        },
+        "token_indexers": {
+            "tokens": {
+                "type": "pretrained_transformer",
+                "model_name": "bert-base-cased"
+            }
+        }
+    },
+    "model": {
+        "type": "quiz",
+        "text_field_embedder": {
+            "token_embedders": {
+                "tokens": {
+                    "type": "pretrained_transformer",
+                    "model_name": "bert-base-cased"
+                }
+            }
+        },
+        "seq2vec_encoder": {
+            "type": "cls_pooler",
+            "embedding_dim": 768,
+            "cls_is_last_token": false
+        },
+        "dropout": 0.1
+    },
+    "data_loader": {
+        "batch_sampler": {
+            "type": "bucket",
+            "batch_size": 1
+        }
+    },
+    "trainer": {
+        "optimizer": null
+    }
+}
