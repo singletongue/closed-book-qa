@@ -29,14 +29,13 @@
             }
         }
     },
-    "datasets_for_vocab_creation": ["train"],
     "vocabulary": {
         "type": "from_files",
         "directory": "work/quizbowl/vocab/bert-base/vocabulary"
     },
     "model": {
         "type": "from_archive",
-        "archive_file": "work/quizbowl/wiki/bert-base/model.tar.gz"
+        "archive_file": "work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz"
     },
     "data_loader": {
         "batch_sampler": {
