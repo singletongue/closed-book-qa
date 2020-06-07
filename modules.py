@@ -85,6 +85,14 @@ class TextEntityDatasetReader(DatasetReader):
               file_path: str) -> Iterable[Instance]:
         file_path = cached_path(file_path)
         logger.info(f'Reading a dataset file at {file_path}')
+
+        if torch.distributed.is_initialized():
+            rank = torch.distributed.get_rank()
+            world_size = torch.distributed.get_world_size()
+        else:
+            rank = 0
+            world_size = 1
+
         with open(file_path) as dataset_file:
             for i, line in enumerate(dataset_file):
                 item = json.loads(line)
@@ -94,10 +102,11 @@ class TextEntityDatasetReader(DatasetReader):
                     entity=item['entity'],
                     metadata=item
                 )
-                if i < 20:
-                    logger.info(f'Example: {instance}')
+                if i % world_size == rank:
+                    if i < 20:
+                        logger.info(f'Example: {instance}')
 
-                yield instance
+                    yield instance
 
 
 @Model.register('quiz')

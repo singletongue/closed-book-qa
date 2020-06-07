@@ -15,6 +15,7 @@ def main(args):
             predicted_answer = item['top10_labels'][0]
 
             if args.postprocess_answers:
+                predicted_answer = predicted_answer.replace('_', ' ')
                 predicted_answer = regex_disamb.sub(r'\1', predicted_answer.strip())
 
             predictions[question_id] = predicted_answer

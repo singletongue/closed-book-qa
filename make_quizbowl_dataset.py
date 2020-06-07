@@ -27,6 +27,7 @@ def normalize_entity_token(entity):
 
 
 def process_quiz_dataset(dataset_path,
+                         entities_set=None,
                          text_unit='sentence',
                          sent_splitter=None,
                          do_process_text=False,
@@ -34,6 +35,13 @@ def process_quiz_dataset(dataset_path,
     loaded_dataset = json.load(open(dataset_path))
 
     for question in tqdm(loaded_dataset['questions']):
+        question_id = question['qanta_id']
+
+        answer_entity = normalize_entity_token(question['page'])
+        if entities_set is not None and answer_entity not in entities_set:
+            logger.warning(f'Question {question_id} is skipped: unknown answer entity {answer_entity}')
+            continue
+
         if text_unit == 'question':
             texts = [question['text'].strip()]
         elif text_unit in ('sentence', 'sequence'):
@@ -52,17 +60,15 @@ def process_quiz_dataset(dataset_path,
         if do_process_text:
             texts = [process_text(t) for t in texts if process_text(t)]
 
-        entity = normalize_entity_token(question['page'])
-
         for i, text in enumerate(texts):
             if len(text) < min_text_length:
                 logger.warning(f'Skipped (too short text): {text}')
                 continue
 
             item = {
-                'qanta_id': question['qanta_id'],
+                'qanta_id': question_id,
                 'text': text,
-                'entity': entity,
+                'entity': answer_entity,
                 'text_unit': text_unit,
             }
             if text_unit in ('sentence', 'sequence'):
@@ -85,9 +91,17 @@ def main(args):
     else:
         sent_splitter = None
 
+    if args.entities_file is not None:
+        logger.info('loading entity file')
+        entities_set = set(normalize_entity_token(line) for line in tqdm(open(args.entities_file)))
+        logger.info(f'number of entities: {len(entities_set)}')
+    else:
+        entities_set = None
+
     logger.info('Processing the Quiz dataset')
     with open(args.output_file, 'w') as fo:
         for item in process_quiz_dataset(args.dataset_file,
+                                         entities_set=entities_set,
                                          text_unit=args.text_unit,
                                          sent_splitter=sent_splitter,
                                          do_process_text=args.do_process_text,
@@ -99,6 +113,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_file', type=str, required=True)
     parser.add_argument('--output_file', type=str, required=True)
+    parser.add_argument('--entities_file', type=str)
     parser.add_argument('--text_unit', type=str, default='sentence')
     parser.add_argument('--sent_splitter', type=str)
     parser.add_argument('--do_process_text', action='store_true')

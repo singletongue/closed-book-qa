@@ -36,7 +36,7 @@
     },
     "model": {
         "type": "from_archive",
-        "archive_file": "work/quizbowl/wiki/roberta-base/model.tar.gz"
+        "archive_file": "work/quizbowl/wiki/roberta-base/model_epoch_9.tar.gz"
     },
     "data_loader": {
         "batch_sampler": {

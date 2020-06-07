@@ -1,7 +1,5 @@
 # Quizbowl as a Testbed of Entity Knowledge
 
-- All the experiments were conducted on RAIDEN.
-
 ## Make datasets
 
 ### Wiki datasets
@@ -13,28 +11,55 @@ $ ~/Repos/wikiextractor/WikiExtractor.py --output work/wikiextractor --bytes 100
 ### Quizbowl datasets
 
 ```sh
+# Train data
 $ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.train.2018.04.18.json --output_file work/dataset/quizbowl/train_question.json --text_unit question
 $ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.train.2018.04.18.json --output_file work/dataset/quizbowl/train_sentence.json --text_unit sentence
-$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/quizbowl/dev_question.json --text_unit question
-$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.test.2018.04.18.json --output_file work/dataset/quizbowl/test_question.json --text_unit question
 
+# List of entities which are present in train data
 $ cat work/dataset/quizbowl/train_question.json|jq -r '.entity'|sort|uniq > work/dataset/quizbowl/train_entities.txt
+
+# Dev data -- questions with an zero-shot entity are excluded
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/quizbowl/dev_question.json --entities_file work/dataset/quizbowl/train_entities.txt --text_unit question
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/quizbowl/dev_sentence.json --entities_file work/dataset/quizbowl/train_entities.txt --text_unit sentence
+
+# Eval data -- for evaluating classification accuracy on development set
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/quizbowl/eval_question.json --text_unit question
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.dev.2018.04.18.json --output_file work/dataset/quizbowl/eval_sentence.json --text_unit sentence
+
+# Test data -- for Quizbowl evaluation metrics
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.test.2018.04.18.json --output_file work/dataset/quizbowl/test_question.json --text_unit question
+$ python make_quizbowl_dataset.py --dataset_file ~/data/qanta/2018/qanta.test.2018.04.18.json --output_file work/dataset/quizbowl/test_sentence.json --text_unit sentence
+
+# Create Wikipedia-augmented dataset for answer entities in train data
 $ python make_wiki_dataset.py --dataset_file work/wikiextractor/AA/wiki_00 --title_list_file work/dataset/quizbowl/train_entities.txt --output_file work/dataset/quizbowl/wiki_sentence_blingfire.json --text_unit sentence --sent_splitter blingfire
+
+# Make a concatenated dataset of Quiz and Wiki datasets
 $ cat work/dataset/quizbowl/train_sentence.json work/dataset/quizbowl/wiki_sentence_blingfire.json > work/dataset/quizbowl/train_sentence_wiki_sentence_blingfire.json
 ```
 
 ### TriviaQA datasets
 
 ```sh
-$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/triviaqa-unfiltered/unfiltered-web-train.json --output_file work/dataset/triviaqa/train_question.json
-$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-dev.json --output_file work/dataset/triviaqa/dev_question.json
-$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-dev.json --output_file work/dataset/triviaqa/eval_question.json --ignore_answer
-$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-test-without-answers.json --output_file work/dataset/triviaqa/test_question.json --ignore_answer
+# Train data -- questions without a Wikipedia entity are excluded
+$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/triviaqa-unfiltered/unfiltered-web-train.json --output_file work/dataset/triviaqa/train_question.json --skip_no_entity
 
+# List of entities which are present in train data
 $ cat work/dataset/triviaqa/train_question.json|jq -r '.entity'|sort|uniq > work/dataset/triviaqa/train_entities.txt
+
+# Dev data -- questions without a Wikipedia entity and with an zero-shot entity are excluded
+$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-dev.json --output_file work/dataset/triviaqa/dev_question.json --entities_file work/dataset/triviaqa/train_entities.txt --skip_no_entity
+
+# Eval data -- for evaluating classification accuracy on development set
+$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-dev.json --output_file work/dataset/triviaqa/eval_question.json
+
+# Test data -- for TriviaQA evaluation metrics (no answers are originally annotated)
+$ python make_triviaqa_dataset.py --dataset_file ~/data/triviaqa/qa/wikipedia-test-without-answers.json --output_file work/dataset/triviaqa/test_question.json
+
+# Create Wikipedia-augmented dataset for answer entities in train data
 $ python make_wiki_dataset.py --dataset_file work/wikiextractor/AA/wiki_00 --title_list_file work/dataset/triviaqa/train_entities.txt --output_file work/dataset/triviaqa/wiki_sentence_blingfire.json --text_unit sentence --sent_splitter blingfire
+
+# Make a concatenated dataset of Quiz and Wiki datasets
 $ cat work/dataset/triviaqa/train_question.json work/dataset/triviaqa/wiki_sentence_blingfire.json > work/dataset/triviaqa/train_question_wiki_sentence_blingfire.json
-$ cat work/dataset/triviaqa/train_question.json work/dataset/triviaqa/wiki-fp_sentence_blingfire.json > work/dataset/triviaqa/train_question_wiki-fp_sentence_blingfire.json
 ```
 
 ## make vocabulary files
@@ -62,202 +87,172 @@ $ allennlp train --dry-run --serialization-dir work/triviaqa/vocab/xlnet-base --
 ### Quizbowl
 
 ```sh
+# Quiz
 $ mkdir work/quizbowl/quiz
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz/bert-base.json,SERIALIZATION_DIR=work/quizbowl/quiz/bert-base -N quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz/roberta-base.json,SERIALIZATION_DIR=work/quizbowl/quiz/roberta-base -N quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz/xlnet-base.json,SERIALIZATION_DIR=work/quizbowl/quiz/xlnet-base -N quiz train_raiden.sh
+$ allennlp train --serialization-dir work/quizbowl/quiz/bert-base --include-package modules configs/quizbowl/quiz/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz/roberta-base --include-package modules configs/quizbowl/quiz/roberta-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz/xlnet-base --include-package modules configs/quizbowl/quiz/xlnet-base.json
+$ python archive_model.py --serialization_dir work/quizbowl/quiz/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Wiki
 $ mkdir work/quizbowl/wiki
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki/bert-base.json,SERIALIZATION_DIR=work/quizbowl/wiki/bert-base -N wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki/roberta-base.json,SERIALIZATION_DIR=work/quizbowl/wiki/roberta-base -N wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki/xlnet-base.json,SERIALIZATION_DIR=work/quizbowl/wiki/xlnet-base -N wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/quizbowl/wiki/bert-base --include-package modules configs/quizbowl/wiki/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/wiki/roberta-base --include-package modules configs/quizbowl/wiki/roberta-base.json
+$ allennlp train --serialization-dir work/quizbowl/wiki/xlnet-base --include-package modules configs/quizbowl/wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/quizbowl/wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Quiz + Wiki
 $ mkdir work/quizbowl/quiz_and_wiki
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_and_wiki/bert-base -N quiz_and_wiki -jc gpu-container_g1.72h train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_and_wiki/roberta-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_and_wiki/roberta-base -N quiz_and_wiki -jc gpu-container_g1.72h train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_and_wiki/xlnet-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_and_wiki/xlnet-base -N quiz_and_wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/quizbowl/quiz_and_wiki/bert-base --include-package modules configs/quizbowl/quiz_and_wiki/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz_and_wiki/roberta-base --include-package modules configs/quizbowl/quiz_and_wiki/roberta-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz_and_wiki/xlnet-base --include-package modules configs/quizbowl/quiz_and_wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_and_wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_and_wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_and_wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Quiz -> Wiki
 $ mkdir work/quizbowl/quiz_to_wiki
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_to_wiki/bert-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_to_wiki/bert-base -N quiz_to_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_to_wiki/roberta-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_to_wiki/roberta-base -N quiz_to_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/quiz_to_wiki/xlnet-base.json,SERIALIZATION_DIR=work/quizbowl/quiz_to_wiki/xlnet-base -N quiz_to_wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/quizbowl/quiz_to_wiki/bert-base --include-package modules configs/quizbowl/quiz_to_wiki/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz_to_wiki/roberta-base --include-package modules configs/quizbowl/quiz_to_wiki/roberta-base.json
+$ allennlp train --serialization-dir work/quizbowl/quiz_to_wiki/xlnet-base --include-package modules configs/quizbowl/quiz_to_wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_to_wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_to_wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/quiz_to_wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Wiki -> Quiz
 $ mkdir work/quizbowl/wiki_to_quiz
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki_to_quiz/bert-base.json,SERIALIZATION_DIR=work/quizbowl/wiki_to_quiz/bert-base -N wiki_to_quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki_to_quiz/roberta-base.json,SERIALIZATION_DIR=work/quizbowl/wiki_to_quiz/roberta-base -N wiki_to_quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/quizbowl/wiki_to_quiz/xlnet-base.json,SERIALIZATION_DIR=work/quizbowl/wiki_to_quiz/xlnet-base -N wiki_to_quiz train_raiden.sh
+$ allennlp train --serialization-dir work/quizbowl/wiki_to_quiz/bert-base --include-package modules configs/quizbowl/wiki_to_quiz/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/wiki_to_quiz/roberta-base --include-package modules configs/quizbowl/wiki_to_quiz/roberta-base.json
+$ allennlp train --serialization-dir work/quizbowl/wiki_to_quiz/xlnet-base --include-package modules configs/quizbowl/wiki_to_quiz/xlnet-base.json
+$ python archive_model.py --serialization_dir work/quizbowl/wiki_to_quiz/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/wiki_to_quiz/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/quizbowl/wiki_to_quiz/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 ```
 
 ### TriviaQA
 
 ```sh
+# Quiz
 $ mkdir work/triviaqa/quiz
-qsub -v CONFIG_FILE=configs/triviaqa/quiz/bert-base.json,SERIALIZATION_DIR=work/triviaqa/quiz/bert-base -N quiz train_raiden.sh
-qsub -v CONFIG_FILE=configs/triviaqa/quiz/roberta-base.json,SERIALIZATION_DIR=work/triviaqa/quiz/roberta-base -N quiz train_raiden.sh
-qsub -v CONFIG_FILE=configs/triviaqa/quiz/xlnet-base.json,SERIALIZATION_DIR=work/triviaqa/quiz/xlnet-base -N quiz train_raiden.sh
+$ allennlp train --serialization-dir work/triviaqa/quiz/bert-base --include-package modules configs/triviaqa/quiz/bert-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz/bert-base_30ep --include-package modules configs/triviaqa/quiz/bert-base_30ep.json
+$ allennlp train --serialization-dir work/triviaqa/quiz/roberta-base --include-package modules configs/triviaqa/quiz/roberta-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz/xlnet-base --include-package modules configs/triviaqa/quiz/xlnet-base.json
+$ python archive_model.py --serialization_dir work/triviaqa/quiz/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz/bert-base_30ep --weights_name model_state_epoch_29.th --archive_name model_epoch_29.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Wiki
 $ mkdir work/triviaqa/wiki
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki/bert-base.json,SERIALIZATION_DIR=work/triviaqa/wiki/bert-base -N wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki/roberta-base.json,SERIALIZATION_DIR=work/triviaqa/wiki/roberta-base -N wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki/xlnet-base.json,SERIALIZATION_DIR=work/triviaqa/wiki/xlnet-base -N wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/triviaqa/wiki/bert-base --include-package modules configs/triviaqa/wiki/bert-base.json
+$ allennlp train --serialization-dir work/triviaqa/wiki/roberta-base --include-package modules configs/triviaqa/wiki/roberta-base.json
+$ allennlp train --serialization-dir work/triviaqa/wiki/xlnet-base --include-package modules configs/triviaqa/wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/triviaqa/wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Quiz + Wiki
 $ mkdir work/triviaqa/quiz_and_wiki
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_and_wiki/bert-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_and_wiki/bert-base -N quiz_and_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_and_wiki/roberta-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_and_wiki/roberta-base -N quiz_and_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_and_wiki/xlnet-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_and_wiki/xlnet-base -N quiz_and_wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/triviaqa/quiz_and_wiki/bert-base --include-package modules configs/triviaqa/quiz_and_wiki/bert-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz_and_wiki/roberta-base --include-package modules configs/triviaqa/quiz_and_wiki/roberta-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz_and_wiki/xlnet-base --include-package modules configs/triviaqa/quiz_and_wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_and_wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_and_wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_and_wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Quiz -> Wiki
 $ mkdir work/triviaqa/quiz_to_wiki
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_to_wiki/bert-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_to_wiki/bert-base -N quiz_to_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_to_wiki/roberta-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_to_wiki/roberta-base -N quiz_to_wiki train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/quiz_to_wiki/xlnet-base.json,SERIALIZATION_DIR=work/triviaqa/quiz_to_wiki/xlnet-base -N quiz_to_wiki -jc gpu-container_g1.72h train_raiden.sh
+$ allennlp train --serialization-dir work/triviaqa/quiz_to_wiki/bert-base --include-package modules configs/triviaqa/quiz_to_wiki/bert-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz_to_wiki/roberta-base --include-package modules configs/triviaqa/quiz_to_wiki/roberta-base.json
+$ allennlp train --serialization-dir work/triviaqa/quiz_to_wiki/xlnet-base --include-package modules configs/triviaqa/quiz_to_wiki/xlnet-base.json
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_to_wiki/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_to_wiki/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/quiz_to_wiki/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
+# Wiki -> Quiz
 $ mkdir work/triviaqa/wiki_to_quiz
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki_to_quiz/bert-base.json,SERIALIZATION_DIR=work/triviaqa/wiki_to_quiz/bert-base -N wiki_to_quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki_to_quiz/roberta-base.json,SERIALIZATION_DIR=work/triviaqa/wiki_to_quiz/roberta-base -N wiki_to_quiz train_raiden.sh
-$ qsub -v CONFIG_FILE=configs/triviaqa/wiki_to_quiz/xlnet-base.json,SERIALIZATION_DIR=work/triviaqa/wiki_to_quiz/xlnet-base -N wiki_to_quiz train_raiden.sh
+$ allennlp train --serialization-dir work/triviaqa/wiki_to_quiz/bert-base --include-package modules configs/triviaqa/wiki_to_quiz/bert-base.json
+$ allennlp train --serialization-dir work/triviaqa/wiki_to_quiz/roberta-base --include-package modules configs/triviaqa/wiki_to_quiz/roberta-base.json
+$ allennlp train --serialization-dir work/triviaqa/wiki_to_quiz/xlnet-base --include-package modules configs/triviaqa/wiki_to_quiz/xlnet-base.json
+$ python archive_model.py --serialization_dir work/triviaqa/wiki_to_quiz/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/wiki_to_quiz/roberta-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
+$ python archive_model.py --serialization_dir work/triviaqa/wiki_to_quiz/xlnet-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 ```
-
----
 
 ## Prediction
 
 ### Quizbowl
 
 ```sh
-# make prediction on test files
-$ for dir in work/quizbowl/*/*; do allennlp predict $dir/model.tar.gz work/dataset/quizbowl/test_question.json --output-file $dir/prediction_test_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+# Quiz
+$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/test_question.json --output-file work/quizbowl/quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-$ for dir in work/quizbowl/*/*; do echo $dir; python print_result.py --input_file $dir/prediction_test_question.json; echo ''; done
-work/quizbowl/quiz/bert-base
-# All
-Acc: 0.633 (upper bound: 0.842)
-MRR: 0.683
+# Wiki
+$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-work/quizbowl/quiz/roberta-base
-# All
-Acc: 0.585 (upper bound: 0.842)
-MRR: 0.644
+# Quiz + Wiki
+$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-work/quizbowl/quiz/xlnet-base
-# All
-Acc: 0.650 (upper bound: 0.842)
-MRR: 0.696
+# Quiz -> Wiki
+$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-work/quizbowl/quiz_and_wiki/bert-base
-# All
-Acc: 0.634 (upper bound: 0.842)
-MRR: 0.686
-
-work/quizbowl/quiz_and_wiki/roberta-base
-# All
-Acc: 0.571 (upper bound: 0.842)
-MRR: 0.634
-
-work/quizbowl/quiz_and_wiki/xlnet-base
-# All
-Acc: 0.653 (upper bound: 0.842)
-MRR: 0.699
-
-work/quizbowl/quiz_to_wiki/bert-base
-# All
-Acc: 0.428 (upper bound: 0.842)
-MRR: 0.510
-
-work/quizbowl/quiz_to_wiki/roberta-base
-# All
-Acc: 0.394 (upper bound: 0.842)
-MRR: 0.480
-
-work/quizbowl/quiz_to_wiki/xlnet-base
-# All
-Acc: 0.469 (upper bound: 0.842)
-MRR: 0.545
-
-work/quizbowl/wiki/roberta-base
-# All
-Acc: 0.191 (upper bound: 0.842)
-MRR: 0.264
-
-work/quizbowl/wiki/xlnet-base
-# All
-Acc: 0.274 (upper bound: 0.842)
-MRR: 0.351
-
-work/quizbowl/wiki_to_quiz/bert-base
-# All
-Acc: 0.663 (upper bound: 0.842)
-MRR: 0.707
-
-work/quizbowl/wiki_to_quiz/roberta-base
-# All
-Acc: 0.650 (upper bound: 0.842)
-MRR: 0.695
-
-work/quizbowl/wiki_to_quiz/xlnet-base
-# All
-Acc: 0.690 (upper bound: 0.842)
-MRR: 0.727
+# Wiki -> Quiz
+allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/test_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 ```
 
 ### TriviaQA
 
 ```sh
-$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_dev_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ python print_result.py --input_file work/triviaqa/wiki_to_quiz/bert-base/prediction_dev_question.json
-# All
-Acc: 0.436 (upper bound: 0.798)
-MRR: 0.497
+# Quiz
+$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-# make prediction on evaluation files
-$ for dir in work/triviaqa/*/*; do allennlp predict $dir/model.tar.gz work/dataset/triviaqa/eval_question.json --output-file $dir/prediction_eval_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+# Wiki
+$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-# convert evaluation results to TriviaQA format
-$ for dir in work/triviaqa/*/*; do echo $dir; python convert_triviaqa_prediction.py --input_file $dir/prediction_eval_question.json --output_file $dir/prediction_eval_question_converted.json --postprocess_answers; done
+# Quiz + Wiki
+$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-# print evaluation results
-$ cd ~/Repos/triviaqa
-$ for dir in ~/Projects/quizbowl_beta/work/triviaqa/*/*; do echo $dir; python -m evaluation.triviaqa_evaluation --dataset_file ~/data/triviaqa/qa/wikipedia-dev.json --prediction_file $dir/prediction_eval_question_converted.json|grep -v "em=0:"; done
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz/bert-base
-{'exact_match': 25.534842987614162, 'f1': 28.416237370355127, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz/roberta-base
-{'exact_match': 22.95758788940323, 'f1': 25.729875029262033, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz/xlnet-base
-{'exact_match': 30.78944076066558, 'f1': 33.70652360831268, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_and_wiki/bert-base
-{'exact_match': 38.39609658451145, 'f1': 41.182639199061434, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_and_wiki/roberta-base
-{'exact_match': 37.320155135743775, 'f1': 40.16680044172847, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_and_wiki/xlnet-base
-{'exact_match': 37.345177029901166, 'f1': 40.35863200050341, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_to_wiki/bert-base
-{'exact_match': 14.800450394094833, 'f1': 17.725529054817198, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_to_wiki/roberta-base
-{'exact_match': 14.124859251845365, 'f1': 17.468389924506425, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/quiz_to_wiki/xlnet-base
-{'exact_match': 16.0890779432003, 'f1': 19.02875687499735, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki/bert-base
-{'exact_match': 11.334918053296635, 'f1': 13.264109703494162, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki/roberta-base
-{'exact_match': 11.535093206555736, 'f1': 13.895030626545694, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki/xlnet-base
-{'exact_match': 13.311647691730265, 'f1': 15.719322217397755, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki_to_quiz/bert-base
-{'exact_match': 42.674840485424745, 'f1': 46.222435348545645, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki_to_quiz/roberta-base
-{'exact_match': 42.462154385086954, 'f1': 45.93530032724163, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-/uge_mnt/home/m-suzuki/Projects/quizbowl_beta/work/triviaqa/wiki_to_quiz/xlnet-base
-{'exact_match': 41.87413987238834, 'f1': 45.241961633178896, 'common': 7993, 'denominator': 7993, 'pred_len': 7993, 'gold_len': 7993}
-```
+# Quiz -> Wiki
+$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-```sh
-# make prediction on test set
-$ cd ~/Projects/quizbowl_beta/
-$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model.tar.gz work/dataset/triviaqa/test_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_test_question.json --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+# Wiki -> Quiz
+$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/test_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
-# convert the test result to TriviaQA format
+# convert the test results to TriviaQA format
 $ python convert_triviaqa_prediction.py --input_file work/triviaqa/wiki_to_quiz/bert-base/prediction_test_question.json --output_file work/triviaqa/wiki_to_quiz/bert-base/prediction_test_question_converted.json --postprocess_answers
 
-# prepare a submission file for TriviaQA leader's board
+# prepare submission files for TriviaQA leader's board
 $ cd work/triviaqa/wiki_to_quiz/bert-base
 $ cp prediction_test_question_converted.json predictions.json && zip -j submission.zip predictions.json && rm predictions.json
 ```
