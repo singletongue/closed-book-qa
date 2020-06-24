@@ -27,8 +27,10 @@ def main(args):
                 accuracies[s_id].append(int(rank == 1))
                 oracle_accuracies[s_id].append(int(rank != 'None'))
 
-    for key in reciprocal_ranks.keys():
-        print(f'# {key}')
+    for key in reciprocal_ranks:
+        if len(reciprocal_ranks) > 1:
+            print(f'# {key}')
+
         acc = sum(accuracies[key]) / len(accuracies[key])
         sup_acc = sum(oracle_accuracies[key]) / len(oracle_accuracies[key])
         mrr = sum(reciprocal_ranks[key]) / len(reciprocal_ranks[key])
