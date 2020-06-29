@@ -75,7 +75,7 @@ $ allennlp train --dry-run --serialization-dir work/quizbowl/vocab/xlnet-base --
 
 ### TriviaQA
 
-```
+```sh
 $ mkdir -p work/triviaqa/vocab
 $ allennlp train --dry-run --serialization-dir work/triviaqa/vocab/bert-base --include-package modules configs/triviaqa/make_vocab/bert-base.json
 $ allennlp train --dry-run --serialization-dir work/triviaqa/vocab/roberta-base --include-package modules configs/triviaqa/make_vocab/roberta-base.json
@@ -189,64 +189,58 @@ $ python archive_model.py --serialization_dir work/triviaqa/wiki_to_quiz/xlnet-b
 ### Quizbowl
 
 ```sh
-# Quiz
-$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+# Question level
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file $dir/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file $dir/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file $dir/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+
+# Sentence level
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/train_sentence.json --output-file $dir/prediction_train_sentence.json --batch-size 256 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/dev_sentence.json --output-file $dir/prediction_dev_sentence.json --batch-size 256 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/eval_sentence.json --output-file $dir/prediction_eval_sentence.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/quizbowl/quiz*/* work/quizbowl/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/quizbowl/test_sentence.json --output-file $dir/prediction_test_sentence.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+```
+
+### TriviaQA
+
+```sh
+$ for dir in work/triviaqa/quiz*/* work/triviaqa/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file $dir/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/triviaqa/quiz*/* work/triviaqa/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file $dir/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+$ for dir in work/triviaqa/quiz*/* work/triviaqa/wiki*/*; do allennlp predict $dir/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file $dir/prediction_eval_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules; done
+
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
+```
+
+## Print classification results
+
+### Quizbowl
+
+```sh
+$ for file in work/quizbowl/*/*/prediction_train_question.json; do echo $file; python print_result.py --input_file $file; echo; done > work/quizbowl/results_train_question
+$ for file in work/quizbowl/*/*/prediction_eval_question.json; do echo $file; python print_result.py --input_file $file; echo; done > work/quizbowl/results_eval_question
+```
+
+### TriviaQA
+
+```sh
+$ for file in work/triviaqa/*/*/prediction_train_question.json; do echo $file; python print_result.py --input_file $file; echo; done > work/triviaqa/results_train_question
+$ for file in work/triviaqa/*/*/prediction_eval_question.json; do echo $file; python print_result.py --input_file $file; echo; done > work/triviaqa/results_eval_question
+```
+
+## Test set evaluation
+
+### Quizbowl
+
+```sh
 $ allennlp predict work/quizbowl/quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/test_question.json --output-file work/quizbowl/quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Wiki
-$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Quiz + Wiki
-$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz_and_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Quiz -> Wiki
-$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/quiz_to_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Wiki -> Quiz
-allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/train_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/dev_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/eval_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 $ allennlp predict work/quizbowl/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/quizbowl/test_question.json --output-file work/quizbowl/wiki_to_quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 ```
 
 ### TriviaQA
 
 ```sh
-# Quiz
-$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz/bert-base_30ep/model_epoch_29.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz/bert-base_30ep/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Wiki
-$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Quiz + Wiki
-$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz_and_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz_and_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Quiz -> Wiki
-$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/quiz_to_wiki/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/quiz_to_wiki/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-
-# Wiki -> Quiz
-$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/train_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_train_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/dev_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_dev_question.json --batch-size 64 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
-$ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/eval_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_eval_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 $ allennlp predict work/triviaqa/wiki_to_quiz/bert-base/model_epoch_9.tar.gz work/dataset/triviaqa/test_question.json --output-file work/triviaqa/wiki_to_quiz/bert-base/prediction_test_question.json --batch-size 1 --silent --cuda-device 0 --use-dataset-reader --predictor quiz --include-package modules
 
 # convert the test results to TriviaQA format
