@@ -1,4 +1,5 @@
-allennlp-models==1.0.0rc5
+allennlp==1.0.0rc4.dev20200514
 blingfire==0.1.2
 logzero
+torch==1.5.0
 wikiextractor==0.1
