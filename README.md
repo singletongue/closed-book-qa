@@ -292,7 +292,7 @@ $ cat work/dataset/triviaqa/train_question.json work/dataset/triviaqa/wiki_fp_se
 ```sh
 # Wiki-fp
 $ mkdir work/quizbowl/wiki_fp
-$ allennlp train --serialization-dir work/quizbowl/wiki_fp/bert-base --include-package modules configs/quizbowl/wiki/bert-base.json
+$ allennlp train --serialization-dir work/quizbowl/wiki_fp/bert-base --include-package modules configs/quizbowl/wiki_fp/bert-base.json
 $ python archive_model.py --serialization_dir work/quizbowl/wiki_fp/bert-base --weights_name model_state_epoch_9.th --archive_name model_epoch_9.tar.gz
 
 # Quiz + Wiki-fp
