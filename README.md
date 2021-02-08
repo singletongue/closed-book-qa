@@ -1,6 +1,12 @@
-# Closed-Book Question Answering on Quizbwol and TriviaQA
+# Closed-Book Question Answering on Quizbowl and TriviaQA
 
 **Note:** The documentation is still work in progress.
+
+## References
+
+- 鈴木正敏, 松田耕史, 大内啓樹, 鈴木潤, 乾健太郎. データ指向型アプローチによるクローズドブック質問応答. 自然言語処理, Vol.28, No.1, March 2021 (to appear).
+
+---
 
 ## Requirements
 
