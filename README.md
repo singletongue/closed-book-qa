@@ -1,6 +1,6 @@
 # Closed-Book Question Answering on Quizbowl and TriviaQA
 
-**Note:** The documentation is still work in progress.
+**Note:** This repository is now maintained in [cl-tohoku/closed-book-qa](https://github.com/cl-tohoku/closed-book-qa/).
 
 ## References
 
